@@ -1,17 +1,21 @@
 # RowGuard
 
-Validation-first database queries for SQLAlchemy and Pydantic.
+[![PyPI](https://img.shields.io/pypi/v/rowguard.svg)](https://pypi.org/project/rowguard/)
+[![Documentation](https://readthedocs.org/projects/rowguard/badge/?version=latest)](https://rowguard.readthedocs.io/en/latest/)
+[![Python Versions](https://img.shields.io/pypi/pyversions/rowguard.svg)](https://pypi.org/project/rowguard/)
 
-[![Documentation Status](https://readthedocs.org/projects/rowguard/badge/?version=latest)](https://rowguard.readthedocs.io/en/latest/?badge=latest)
+Validation-first database queries for SQLAlchemy and Pydantic.
 
 RowGuard executes SQLAlchemy queries, validates every returned row against a
 Pydantic model, and explicitly handles rows that fail validation.
 
 ## Status
 
-**0.4.0** — first-class async APIs (`aselect` / `aexecute` / `astream`) over
-`AsyncSession` / `AsyncConnection`, with streaming lifecycle parity to sync.
-ORM remains deferred to 0.5.0; async callback/quarantine handlers to 0.6.0.
+**[0.4.0](https://rowguard.readthedocs.io/en/latest/project/changelog.html)** — first-class
+async APIs (`aselect` / `aexecute` / `astream`) over `AsyncSession` /
+`AsyncConnection`, with streaming lifecycle parity to sync. ORM remains deferred
+to [0.5.0](https://rowguard.readthedocs.io/en/latest/project/roadmap.html); async
+callback/quarantine handlers to 0.6.0.
 
 ## Install
 
@@ -19,9 +23,12 @@ ORM remains deferred to 0.5.0; async callback/quarantine handlers to 0.6.0.
 pip install rowguard
 ```
 
-Requires Python 3.10+, Pydantic v2, SQLAlchemy 2.x, and SQLRules.
+Requires Python 3.10+, Pydantic v2, SQLAlchemy 2.x, and SQLRules. See the
+[installation guide](https://rowguard.readthedocs.io/en/latest/guides/installation.html).
 
 ## Quickstart
+
+Full walkthrough: [Quickstart](https://rowguard.readthedocs.io/en/latest/guides/quickstart.html).
 
 ```python
 from typing import Annotated
@@ -84,9 +91,14 @@ with Session(engine) as session:
 ```
 
 With `use_sqlrules=True` (the default), supported constraints such as `age >= 18`
-are pushed into SQL, so invalid candidate rows may never be returned.
+are pushed into SQL, so invalid candidate rows may never be returned. See the
+[FAQ](https://rowguard.readthedocs.io/en/latest/guides/faq.html) if that surprises
+you.
 
 ## Public API (0.4.0)
+
+Full reference: [API guide](https://rowguard.readthedocs.io/en/latest/api.html) ·
+[Python autodoc](https://rowguard.readthedocs.io/en/latest/reference/api.html).
 
 | Function | Purpose |
 | --- | --- |
@@ -99,17 +111,20 @@ are pushed into SQL, so invalid candidate rows may never be returned.
 | `aexecute(...)` | Async `execute` for `AsyncSession` / `AsyncConnection` |
 | `astream(...)` | Async stream (`AsyncStreamResult`) without buffering accepted rows |
 
-Rejection policies: `raise` (default), `collect`, `skip`.
+Rejection policies: `raise` (default), `collect`, `skip` — see
+[rejection policies](https://rowguard.readthedocs.io/en/latest/guides/rejection-policies.html).
 
 Optional planning knobs: `compiled_rules=` (precompiled SQLRules), `strict=`
 (Pydantic), `field_map=` / `column_map=` (validated at plan time).
 
 Streaming knobs: `yield_per=`, `observers=` (`StreamObserver` / `BaseStreamObserver`).
-Observers remain sync callables in 0.4.
+Observers remain sync callables in 0.4. See the
+[streaming guide](https://rowguard.readthedocs.io/en/latest/guides/streaming.html).
 
 Async note: only DB I/O is awaited. Pydantic validation runs on the event loop;
 heavy models can block. Prefer `async with rowguard.astream(...)` for cleanup.
-Install async extras with `pip install rowguard[async]`.
+Install async extras with `pip install rowguard[async]`. Details:
+[async guide](https://rowguard.readthedocs.io/en/latest/guides/async.html).
 
 ## Architecture
 
@@ -135,15 +150,20 @@ Pydantic Validation
       └── Rejected Row
 ```
 
+More detail:
+[architecture overview](https://rowguard.readthedocs.io/en/latest/architecture_overview.html)
+· [specification](https://rowguard.readthedocs.io/en/latest/spec.html).
+
 ## Documentation
 
-- [Online docs](https://rowguard.readthedocs.io) — Furo / Read the Docs
-- [Start here](https://rowguard.readthedocs.io/en/latest/guides/start-here.html) · [Quickstart](https://rowguard.readthedocs.io/en/latest/guides/quickstart.html)
-- [SPEC.md](SPEC.md) — product specification
-- [API.md](API.md) — public API
-- [ARCHITECTURE.md](ARCHITECTURE.md) — layered design
-- [ROADMAP.md](ROADMAP.md) — release plan
-- [docs/](docs/) — Sphinx site + design notes
+- [Docs home](https://rowguard.readthedocs.io/en/latest/)
+- [Start here](https://rowguard.readthedocs.io/en/latest/guides/start-here.html)
+- [Quickstart](https://rowguard.readthedocs.io/en/latest/guides/quickstart.html)
+- [API](https://rowguard.readthedocs.io/en/latest/api.html)
+- [Specification](https://rowguard.readthedocs.io/en/latest/spec.html)
+- [Architecture](https://rowguard.readthedocs.io/en/latest/architecture_overview.html)
+- [Roadmap](https://rowguard.readthedocs.io/en/latest/project/roadmap.html)
+- [Changelog](https://rowguard.readthedocs.io/en/latest/project/changelog.html)
 
 Build docs locally:
 
@@ -154,6 +174,8 @@ make docs
 ```
 
 ## Development
+
+See [Contributing](https://rowguard.readthedocs.io/en/latest/developer/CONTRIBUTING.html).
 
 ```bash
 pip install -e ".[dev,async]"
