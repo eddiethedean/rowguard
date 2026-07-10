@@ -1,19 +1,19 @@
 # ORM.md
 
-:::{admonition} Status: not shipped in 0.4.0
-:class: warning
+:::{admonition} Status: shipped in 0.5.0
+:class: tip
 
-This document is a **design draft for 0.5.0**. SQLAlchemy ORM mapped-class
-integration is **not available** yet. 0.4 supports SQLAlchemy Core `Table` /
-`Select` only. See [Supported vs planned](../project/supported.md).
+ORM mapped-class support ships in **0.5.0**. Prefer the user guide
+[ORM and SQLModel](../guides/orm-sqlmodel.md) for the supported surface. This
+page retains deeper design notes; where they conflict with the guide or
+[Supported vs planned](../project/supported.md), those pages win.
 :::
 
 # RowGuard SQLAlchemy ORM Integration
 
 ## Purpose
 
-RowGuard is designed to support SQLAlchemy ORM applications without becoming an
-ORM itself. **This integration is planned for 0.5.0 and is not shipped in 0.4.**
+RowGuard supports SQLAlchemy ORM applications without becoming an ORM itself.
 
 When shipped, the ORM integration will allow RowGuard to:
 

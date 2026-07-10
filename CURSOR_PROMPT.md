@@ -3,27 +3,30 @@
 Build and maintain RowGuard from the architecture and specification documents in
 this repository.
 
-**Current shipped release: 0.4.0.** Do not re-implement 0.1.0–0.4.0 unless fixing
-regressions. Next planned milestone is **0.5.0 (ORM / SQLModel)** per `ROADMAP.md`
-and `docs/developer/MILESTONES.md` (MILESTONES is authoritative).
+**Current shipped release: 0.5.0.** Do not re-implement 0.1.0–0.5.0 unless fixing
+regressions. Next planned milestone is **0.6.0 (rejection platform)** per
+`ROADMAP.md` and `docs/developer/MILESTONES.md` (MILESTONES is authoritative).
 
-## Shipped through 0.4.0
+## Shipped through 0.5.0
 
 - Python 3.10+
 - Pydantic v2
 - SQLAlchemy 2.x
 - SQLRules integration (`sqlrules>=0.4.0`)
 - SQLAlchemy Core `Table` and `Select`
+- SQLAlchemy ORM mapped classes (projected + single-entity)
+- SQLModel table sources (`rowguard[sqlmodel]`)
 - Sync `Session` / `Connection` and async `AsyncSession` / `AsyncConnection`
 - `select()`, `execute()`, `validate_rows()`, `compile_plan()`, `stream()`
 - `aselect()`, `aexecute()`, `astream()`
 - `StreamResult[T]` / `AsyncStreamResult[T]` with context-managed cleanup
 - `StreamObserver` / `BaseStreamObserver` progress hooks (sync callables)
 - Staged immutable `ExecutionPlan` and planning configs
-- `QueryResult[T]`, `RejectedRow`, `QueryStatistics`
+- `QueryResult[T]`, `RejectedRow` (incl. `source_identity`), `QueryStatistics`
 - Rejection policies: `raise`, `collect`, `skip`
-- Mapping-based validation and plan-time field/column map checks
-- SQLite unit + integration + streaming + async (aiosqlite) tests
+- Mapping-based validation default; opt-in `orm_validation="from_attributes"`
+- Unloaded/deferred attribute errors (`unloaded_attributes="error"`)
+- SQLite unit + integration + streaming + async + ORM/SQLModel tests
 - Strict typing
 - No ORM relationship traversal
 - No async callback/quarantine handlers until 0.6.0
@@ -46,5 +49,5 @@ and `docs/developer/MILESTONES.md` (MILESTONES is authoritative).
 
 ## Next Deliverable
 
-Implement the **0.5.0 ORM / SQLModel** public API and tests required by
-`docs/developer/MILESTONES.md`, without breaking 0.4.x call sites.
+Implement the **0.6.0 rejection platform** (callback / quarantine) required by
+`docs/developer/MILESTONES.md`, without breaking 0.5.x call sites.

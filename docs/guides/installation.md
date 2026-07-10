@@ -21,21 +21,28 @@ Async extras (aiosqlite + greenlet):
 pip install "rowguard[async]"
 ```
 
+SQLModel table-source support:
+
+```bash
+pip install "rowguard[sqlmodel]"
+```
+
 With [uv](https://github.com/astral-sh/uv):
 
 ```bash
 uv pip install rowguard
 uv pip install "rowguard[async]"
+uv pip install "rowguard[sqlmodel]"
 ```
 
-## Supported drivers (0.4.0)
+## Supported drivers (0.5.0)
 
 | Stack | Status |
 | --- | --- |
 | `sqlite+pysqlite` (sync) | Supported / primary unit tests |
 | `sqlite+aiosqlite` (async) | Supported / required async CI matrix |
 | PostgreSQL sync (`psycopg`) | Optional extra `rowguard[postgresql]`; not required for Core |
-| `asyncpg` | Not required for 0.4; may work via SQLAlchemy async but is not a CI gate |
+| `asyncpg` | Not required for 0.5; may work via SQLAlchemy async but is not a CI gate |
 
 See [Supported vs planned](../project/supported.md).
 

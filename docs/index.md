@@ -80,6 +80,7 @@ Pages under **Future / design** describe planned work. They are **not shipped** 
 <div class="rg-callout">
   <strong>Requires</strong> Python {{ python_min }}, Pydantic v2, SQLAlchemy 2.x, and SQLRules ≥0.4.
   Async extras: <code>pip install "rowguard[async]"</code>.
+  SQLModel: <code>pip install "rowguard[sqlmodel]"</code>.
 </div>
 ```
 
@@ -105,6 +106,7 @@ guides/troubleshooting
 guides/rejection-policies
 guides/streaming
 guides/async
+guides/orm-sqlmodel
 guides/best-practices
 examples/index
 ```
@@ -160,6 +162,8 @@ rejection/DIAGNOSTICS
 :caption: Integrations (shipped)
 
 integrations/CORE
+integrations/ORM
+integrations/SQLMODEL
 integrations/WHY_NOT_SQLMODEL
 ```
 
@@ -167,8 +171,6 @@ integrations/WHY_NOT_SQLMODEL
 :maxdepth: 1
 :caption: Future / design (not shipped)
 
-integrations/ORM
-integrations/SQLMODEL
 integrations/REFLECTION
 integrations/RAW_SQL
 rejection/CALLBACKS

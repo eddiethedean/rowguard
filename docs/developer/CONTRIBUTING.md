@@ -96,8 +96,8 @@ python -m pip install -e ".[dev,postgresql,async]"
 python -m pip install -e ".[docs]"
 ```
 
-Exact extras are defined in `pyproject.toml` (`dev`, `docs`, `async`, `postgresql`).
-There is **no** `sqlmodel` extra until 0.5.0.
+Exact extras are defined in `pyproject.toml` (`dev`, `docs`, `async`, `postgresql`,
+`sqlmodel`).
 
 To build documentation locally (Sphinx / Read the Docs):
 

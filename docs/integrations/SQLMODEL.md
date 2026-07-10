@@ -1,10 +1,11 @@
 # SQLMODEL.md
 
-:::{admonition} Status: not shipped in 0.4.0
-:class: warning
+:::{admonition} Status: shipped in 0.5.0
+:class: tip
 
-This document is a **design draft for 0.5.0**. SQLModel integration is **not
-available** yet. See [Supported vs planned](../project/supported.md) and
+SQLModel table-source support ships in **0.5.0** (`pip install rowguard[sqlmodel]`).
+Start with [ORM and SQLModel](../guides/orm-sqlmodel.md). See also
+[Supported vs planned](../project/supported.md) and
 [Why not SQLModel (positioning)](WHY_NOT_SQLMODEL.md).
 :::
 
@@ -12,9 +13,8 @@ available** yet. See [Supported vs planned](../project/supported.md) and
 
 ## Purpose
 
-RowGuard is designed to work with SQLModel applications while solving a
-different problem from SQLModel itself. **This integration is planned for 0.5.0
-and is not shipped in 0.4.**
+RowGuard works with SQLModel applications while solving a different problem from
+SQLModel itself.
 
 SQLModel combines Pydantic and SQLAlchemy to simplify database model definition,
 persistence, and querying. RowGuard adds a validation-first read layer that

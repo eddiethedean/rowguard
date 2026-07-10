@@ -2,7 +2,7 @@
 
 # RowGuard Specification
 
-## Current as of 0.4.0
+## Current as of 0.5.0
 
 Shipped surface:
 
@@ -10,6 +10,9 @@ Shipped surface:
 - Async Core API: `aselect`, `aexecute`, `astream`
 - `StreamResult[T]` / `AsyncStreamResult[T]` with context-managed cleanup
 - SQLAlchemy Core `Table` / `Select` with sync or async session/connection
+- SQLAlchemy ORM mapped classes (projected + single-entity)
+- SQLModel table sources (`rowguard[sqlmodel]`)
+- `orm_validation`, `unloaded_attributes`, `attribute_map`, `source_identity`
 - SQLRules pushdown (`use_sqlrules`, optional `compiled_rules`)
 - Rejection policies: `raise`, `collect`, `skip`
 - Staged immutable `ExecutionPlan` and planning diagnostics
@@ -18,7 +21,7 @@ Shipped surface:
 
 Deferred (not available yet):
 
-- ORM / SQLModel — 0.5.0
+- Nested relationship / graph validation — later
 - Async callback / quarantine reject handlers — 0.6.0
 - Callback / quarantine / log rejection policies — 0.6.0
 
@@ -34,8 +37,8 @@ query is classified as either:
 2.  A rejected row with structured diagnostics.
 
 Unlike an ORM, RowGuard does not own your schema. It works with existing
-SQLAlchemy Core tables today, and is designed to extend to ORM models,
-reflected schemas, and SQLModel in later releases.
+SQLAlchemy Core tables, ORM mapped classes, and SQLModel table models, and is
+designed to extend to reflected schemas and raw SQL in later releases.
 
 ------------------------------------------------------------------------
 
@@ -205,10 +208,12 @@ because Pydantic remains the source of truth.
 
 # Supported Inputs
 
-Current (0.4.0):
+Current (0.5.0):
 
 -   SQLAlchemy Table
 -   SQLAlchemy Select
+-   SQLAlchemy ORM mapped classes
+-   SQLModel table models (`rowguard[sqlmodel]`)
 -   SQLAlchemy Session / Connection
 -   SQLAlchemy AsyncSession / AsyncConnection
 -   Buffered (`select` / `execute` / `aselect` / `aexecute`) and streaming
@@ -216,9 +221,8 @@ Current (0.4.0):
 
 Future:
 
--   SQLAlchemy ORM model (0.5.0)
--   SQLModel (0.5.0)
 -   reflected metadata
+-   raw `text()` queries
 
 ------------------------------------------------------------------------
 

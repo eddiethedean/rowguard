@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "rowguard"
-version = "0.4.0"
+version = "0.5.0"
 description = "Validation-first SQLAlchemy queries with Pydantic row validation."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -57,6 +57,7 @@ docs = [
 ]
 postgresql = ["psycopg[binary]>=3.1"]
 async = ["aiosqlite>=0.20", "greenlet>=3.0"]
+sqlmodel = ["sqlmodel>=0.0.22"]
 
 [project.urls]
 Homepage = "https://github.com/eddiethedean/rowguard"
@@ -83,8 +84,6 @@ markers = [
 branch = true
 source = ["rowguard"]
 omit = [
-  "src/rowguard/integrations/sqlalchemy_orm.py",
-  "src/rowguard/integrations/sqlmodel.py",
   "src/rowguard/plugins/*",
 ]
 

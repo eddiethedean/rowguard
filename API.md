@@ -22,22 +22,26 @@ result = rowguard.select(
     model=UserRead,
     where=(),
     field_map=None,
+    attribute_map=None,
     column_map=None,
     parameters=None,
     on_reject="raise",
     use_sqlrules=True,
     compiled_rules=None,
     strict=None,
+    orm_validation="mapping",
+    unloaded_attributes="error",
 )
 ```
 
 Parameters:
 
 -   `session` or `connection`: exactly one SQLAlchemy execution context
--   `table`: SQLAlchemy Core `Table` or selectable
+-   `table`: SQLAlchemy Core `Table`, ORM mapped class, or SQLModel table model
 -   `model`: Pydantic `BaseModel` subclass
 -   `where`: optional additional SQLAlchemy expressions (default `()`)
 -   `field_map`: optional model-field → result-key mapping (validated at plan time)
+-   `attribute_map`: optional model-field → entity-attribute mapping (entity results)
 -   `column_map`: optional model-field → SQLAlchemy column mapping for SQLRules
     (validated at plan time when source columns are known)
 -   `parameters`: optional bound parameters forwarded to SQLAlchemy
@@ -47,6 +51,8 @@ Parameters:
 -   `compiled_rules`: optional precompiled SQLRules dict; when set, skips live
     `sqlrules.compile` and only flattens via `sqlrules.where`
 -   `strict`: optional Pydantic strict-mode flag for validation planning
+-   `orm_validation`: `"mapping"` (default) or `"from_attributes"` (entity selects)
+-   `unloaded_attributes`: `"error"` only in 0.5 (deferred/expired attrs fail adaptation)
 
 Returns:
 
@@ -230,7 +236,7 @@ rejected.raw_row
 -   `validation_time_ns`
 -   `rejection_time_ns`
 
-## Async API (0.4.0)
+## Async API (0.5.0)
 
 Requires an async SQLAlchemy engine/driver (e.g. `sqlite+aiosqlite`). Install
 with `pip install rowguard[async]`.
@@ -268,7 +274,14 @@ cancellation).
 Only database I/O is awaited. Pydantic validation runs synchronously on the
 event loop and can block under heavy models. Stream observers remain sync
 callables. Async reject handlers (callback / quarantine) are not shipped in
-0.4.0.
+0.5.0.
+
+## ORM / SQLModel (0.5.0)
+
+- Prefer projected selects: `execute(statement=select(User.id, ...), source=User)`
+- Entity selects: `select(table=User, ...)` uses `ORMEntityAdapter`
+- `RejectedRow.source_identity` may hold a primary-key dict
+- Install SQLModel support with `pip install rowguard[sqlmodel]`
 
 ## Errors
 

@@ -5,14 +5,20 @@ Runnable scripts from the repository. Copy them locally or browse on GitHub:
 - [examples/basic.py](https://github.com/eddiethedean/rowguard/blob/main/examples/basic.py) — buffered `select` with `collect`
 - [examples/streaming.py](https://github.com/eddiethedean/rowguard/blob/main/examples/streaming.py) — sync `stream`
 - [examples/async_basic.py](https://github.com/eddiethedean/rowguard/blob/main/examples/async_basic.py) — `aselect` + `astream` (needs `rowguard[async]`)
+- [examples/orm_projected.py](https://github.com/eddiethedean/rowguard/blob/main/examples/orm_projected.py) — ORM column projection
+- [examples/orm_entity.py](https://github.com/eddiethedean/rowguard/blob/main/examples/orm_entity.py) — single-entity ORM select
+- [examples/sqlmodel_basic.py](https://github.com/eddiethedean/rowguard/blob/main/examples/sqlmodel_basic.py) — SQLModel table source (needs `rowguard[sqlmodel]`)
 
 ## Run locally
 
 ```bash
-pip install -e ".[dev,async]"
+pip install -e ".[dev,async,sqlmodel]"
 python examples/basic.py
 python examples/streaming.py
 python examples/async_basic.py
+python examples/orm_projected.py
+python examples/orm_entity.py
+python examples/sqlmodel_basic.py
 ```
 
 ## Minimal buffered example

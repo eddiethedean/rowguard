@@ -4,7 +4,7 @@ Single source of truth for what RowGuard **ships today** versus what is still
 **design / roadmap**. When a deep design doc conflicts with this page, **this
 page wins** for adopter expectations.
 
-## Shipped in 0.4.0
+## Shipped in 0.5.0
 
 | Area | Status |
 | --- | --- |
@@ -14,6 +14,10 @@ page wins** for adopter expectations.
 | Async streaming (`astream` → `AsyncStreamResult`) | Shipped |
 | Rejection policies `raise` / `collect` / `skip` | Shipped |
 | SQLAlchemy Core `Table` / `Select` | Shipped |
+| SQLAlchemy ORM mapped classes (projected + single-entity) | Shipped |
+| SQLModel table sources (`rowguard[sqlmodel]`) | Shipped |
+| `orm_validation` / `unloaded_attributes` / `attribute_map` | Shipped |
+| `RejectedRow.source_identity` (PK dict) | Shipped |
 | `Session` / `Connection` / `AsyncSession` / `AsyncConnection` | Shipped |
 | SQLRules pushdown (`use_sqlrules`, `compiled_rules`) | Shipped |
 | Stream observers (sync callables) | Shipped |
@@ -23,13 +27,12 @@ page wins** for adopter expectations.
 
 | Area | Target | Notes |
 | --- | --- | --- |
-| SQLAlchemy ORM mapped classes | **0.5.0** | Design docs under Future / design |
-| SQLModel integration | **0.5.0** | Design docs under Future / design |
+| Nested relationship / graph validation | Later | Explicitly out of 0.5 |
 | Callback / quarantine / log rejection policies | **0.6.0** | Design docs under Future / design |
-| Async reject handlers | **0.6.0** | Same as sync: not shipped in 0.4 |
+| Async reject handlers | **0.6.0** | Same as sync: not shipped |
 | Plugin system | **0.7.0** | Design draft only |
 | Reflection / raw `text()` | **0.8.0** | Design draft only |
-| asyncpg as required CI driver | Later | Not required for 0.4 |
+| asyncpg as required CI driver | Later | Not required for 0.5 |
 
 ## How to read design docs
 
@@ -37,6 +40,9 @@ Pages under **Future / design (not shipped)** describe intended behavior. They
 use present tense in places for readability, but **APIs and examples there must
 not be copied into production code** until the matching release ships and this
 page is updated.
+
+ORM / SQLModel design notes under Integrations are **shipped** as of 0.5; prefer
+[ORM and SQLModel](../guides/orm-sqlmodel.md) for the supported surface.
 
 ## Related
 

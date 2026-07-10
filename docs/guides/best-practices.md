@@ -1,6 +1,6 @@
 # Best practices
 
-Practical guidance for 0.4.0 Core usage.
+Practical guidance for 0.5.0 Core and ORM usage.
 
 ## Prefer projection models
 

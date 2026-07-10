@@ -125,7 +125,7 @@ async with rowguard.astream(
 
 ------------------------------------------------------------------------
 
-# 0.5.0 --- ORM and SQLModel Integration
+# 0.5.0 --- ORM and SQLModel Integration (shipped)
 
 ## Goals
 

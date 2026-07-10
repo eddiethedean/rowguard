@@ -16,9 +16,9 @@ quickstart) or use a statement that still returns those rows.
 
 ## Do I need an ORM?
 
-No. 0.4 targets SQLAlchemy Core `Table` / `Select` with `Session`, `Connection`,
-`AsyncSession`, or `AsyncConnection`. ORM / SQLModel support is planned for
-**0.5.0**.
+No. 0.5 targets SQLAlchemy Core `Table` / `Select` and ORM / SQLModel mapped
+classes with `Session`, `Connection`, `AsyncSession`, or `AsyncConnection`. See
+[ORM and SQLModel](orm-sqlmodel.md).
 
 ## Is async just a thread pool around sync?
 

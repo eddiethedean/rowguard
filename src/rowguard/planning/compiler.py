@@ -7,11 +7,20 @@ from uuid import uuid4
 from pydantic import BaseModel
 from sqlalchemy import Table
 
+from rowguard.adapters.orm_entity import ORMEntityAdapter
 from rowguard.adapters.sqlalchemy_row import SQLAlchemyRowAdapter
 from rowguard.cache import LRUCache
 from rowguard.diagnostics import Diagnostic
 from rowguard.errors import PlanningError
 from rowguard.integrations.sqlalchemy_core import apply_where, build_select, is_select
+from rowguard.integrations.sqlalchemy_orm import (
+    classify_select_shape,
+    is_mapped_class,
+    is_relationship_attr,
+    mapped_columns,
+    single_entity_class,
+)
+from rowguard.integrations.sqlmodel import is_sqlmodel_table
 from rowguard.integrations.sqlrules import SQLRulesBridge
 from rowguard.planning.config import RejectionPolicyName
 from rowguard.planning.execution_plan import (
@@ -43,6 +52,8 @@ def _model_field_names(model: type[BaseModel]) -> set[str]:
 def _table_column_names(source: Any) -> dict[str, Any]:
     if isinstance(source, Table):
         return {col.name: col for col in source.columns}
+    if is_sqlmodel_table(source) or is_mapped_class(source):
+        return mapped_columns(source)
     columns = getattr(source, "c", None) or getattr(source, "columns", None)
     if columns is None:
         return {}
@@ -59,6 +70,7 @@ def _source_fingerprint(source: Any | None) -> tuple[Any, ...]:
         id(source),
         type(source).__name__,
         getattr(source, "name", None),
+        getattr(source, "__name__", None),
     )
 
 
@@ -151,8 +163,13 @@ class QueryPlanner(Generic[T]):
             (*pushdown_plan.expressions, *request.where),
         )
 
-        adapter_plan = self._plan_adapter(request, resolved=resolved, execution_id=execution_id)
-        validation_plan = self._plan_validation(request)
+        adapter_plan = self._plan_adapter(
+            request,
+            resolved=resolved,
+            statement=statement,
+            execution_id=execution_id,
+        )
+        validation_plan = self._plan_validation(request, adapter_plan=adapter_plan)
         rejection_plan = self._plan_rejection(request, execution_id=execution_id)
 
         plan = ExecutionPlan(
@@ -176,6 +193,7 @@ class QueryPlanner(Generic[T]):
     def _cache_key(self, request: QueryRequest[T]) -> str:
         # Structural key only — exclude bind parameter values (rebound on hit).
         field_map = tuple(sorted((request.adapter.field_map or {}).items()))
+        attribute_map = tuple(sorted((request.adapter.attribute_map or {}).items()))
         compiled_rules = request.pushdown.compiled_rules
         return repr(
             (
@@ -185,6 +203,9 @@ class QueryPlanner(Generic[T]):
                 id(request.statement) if request.statement is not None else None,
                 request.where,
                 field_map,
+                attribute_map,
+                request.adapter.orm_validation,
+                request.adapter.unloaded_attributes,
                 _column_map_fingerprint(
                     dict(request.pushdown.column_map) if request.pushdown.column_map else None
                 ),
@@ -192,6 +213,7 @@ class QueryPlanner(Generic[T]):
                 id(compiled_rules) if compiled_rules is not None else None,
                 _source_fingerprint(request.pushdown.source),
                 request.validation.strict,
+                request.validation.from_attributes,
                 request.rejection.policy,
             )
         )
@@ -213,6 +235,18 @@ class QueryPlanner(Generic[T]):
                 f"Supported: {', '.join(sorted(_POLICIES))}",
                 stage="rejection",
             )
+        if request.adapter.orm_validation not in {"mapping", "from_attributes"}:
+            raise PlanningError(
+                f"Unsupported orm_validation: {request.adapter.orm_validation!r}. "
+                "Supported: mapping, from_attributes",
+                stage="adapter",
+            )
+        if request.adapter.unloaded_attributes != "error":
+            raise PlanningError(
+                f"Unsupported unloaded_attributes: {request.adapter.unloaded_attributes!r}. "
+                "Supported in 0.5: error",
+                stage="adapter",
+            )
 
     def _resolve_source(
         self,
@@ -233,6 +267,25 @@ class QueryPlanner(Generic[T]):
                 selectable=source,
                 columns=_table_column_names(source),
                 source_name=source.name,
+            )
+        if is_sqlmodel_table(source):
+            table = mapped_columns(source)
+            return ResolvedSource(
+                kind="sqlmodel",
+                selectable=source,
+                columns=table,
+                source_name=getattr(getattr(source, "__table__", None), "name", None)
+                or getattr(source, "__tablename__", None),
+                metadata={"execution_id": execution_id},
+            )
+        if is_mapped_class(source):
+            return ResolvedSource(
+                kind="orm",
+                selectable=source,
+                columns=mapped_columns(source),
+                source_name=getattr(getattr(source, "__table__", None), "name", None)
+                or getattr(source, "__tablename__", None),
+                metadata={"execution_id": execution_id},
             )
         if is_select(source):
             return ResolvedSource(
@@ -393,10 +446,11 @@ class QueryPlanner(Generic[T]):
         request: QueryRequest[T],
         *,
         resolved: ResolvedSource | None,
+        statement: Any,
         execution_id: str,
     ) -> AdapterPlan:
-        del resolved  # Result-key field_map values are checked at adaptation time.
         field_map = request.adapter.field_map
+        attribute_map = request.adapter.attribute_map
         if field_map:
             model_fields = _model_field_names(request.model)
             unknown = sorted(set(field_map.keys()) - model_fields)
@@ -406,8 +460,84 @@ class QueryPlanner(Generic[T]):
                     stage="adapter",
                     execution_id=execution_id,
                 )
-            # field_map values are result keys (labels), not necessarily source
-            # table column names — missing keys are enforced at adaptation time.
+
+        if attribute_map:
+            model_fields = _model_field_names(request.model)
+            unknown = sorted(set(attribute_map.keys()) - model_fields)
+            if unknown:
+                raise PlanningError(
+                    f"attribute_map keys are not model fields: {', '.join(unknown)}",
+                    stage="adapter",
+                    execution_id=execution_id,
+                )
+
+        shape = classify_select_shape(statement) if is_select(statement) else "projection"
+        if shape == "unsupported":
+            raise PlanningError(
+                "Multi-entity or entity+scalar result shapes are not supported. "
+                "Use a single-entity select(User) or an explicit column projection.",
+                stage="adapter",
+                execution_id=execution_id,
+            )
+
+        orm_validation = request.adapter.orm_validation
+        if shape == "entity":
+            entity_cls = single_entity_class(statement)
+            if entity_cls is None and resolved is not None and is_mapped_class(
+                resolved.selectable
+            ):
+                entity_cls = resolved.selectable
+            if entity_cls is None:
+                raise PlanningError(
+                    "Could not resolve mapped class for entity select",
+                    stage="adapter",
+                    execution_id=execution_id,
+                )
+            if attribute_map:
+                for attr_name in attribute_map.values():
+                    if is_relationship_attr(entity_cls, attr_name):
+                        raise PlanningError(
+                            f"attribute_map must not target relationship "
+                            f"{attr_name!r}; RowGuard does not traverse relationships",
+                            stage="adapter",
+                            execution_id=execution_id,
+                        )
+            expected = (
+                tuple(attribute_map.keys())
+                if attribute_map
+                else tuple(sorted(_model_field_names(request.model)))
+            )
+            return AdapterPlan(
+                adapter=ORMEntityAdapter(
+                    attribute_keys=expected,
+                    attribute_map=attribute_map,
+                    mapped_class=entity_cls,
+                    unloaded_attributes=request.adapter.unloaded_attributes,
+                    orm_validation=orm_validation,
+                ),
+                field_map=dict(field_map) if field_map else None,
+                attribute_map=dict(attribute_map) if attribute_map else None,
+                expected_keys=expected,
+                result_shape="entity",
+                orm_validation=orm_validation,
+                unloaded_attributes=request.adapter.unloaded_attributes,
+            )
+
+        if orm_validation == "from_attributes":
+            raise PlanningError(
+                "orm_validation='from_attributes' requires a single-entity select; "
+                "use select(MappedClass) or pass a projected statement with "
+                "orm_validation='mapping'",
+                stage="adapter",
+                execution_id=execution_id,
+            )
+        if attribute_map:
+            raise PlanningError(
+                "attribute_map is only valid for single-entity ORM results; "
+                "use field_map for projected column rows",
+                stage="adapter",
+                execution_id=execution_id,
+            )
 
         expected = (
             tuple(field_map.keys())
@@ -418,16 +548,33 @@ class QueryPlanner(Generic[T]):
             adapter=SQLAlchemyRowAdapter(field_map=field_map),
             field_map=dict(field_map) if field_map else None,
             expected_keys=expected,
+            result_shape="projection",
+            orm_validation="mapping",
+            unloaded_attributes=request.adapter.unloaded_attributes,
         )
 
-    def _plan_validation(self, request: QueryRequest[T]) -> ValidationPlan[T]:
+    def _plan_validation(
+        self,
+        request: QueryRequest[T],
+        *,
+        adapter_plan: AdapterPlan,
+    ) -> ValidationPlan[T]:
+        from_attributes = (
+            adapter_plan.result_shape == "entity"
+            and (
+                adapter_plan.orm_validation == "from_attributes"
+                or request.validation.from_attributes
+            )
+        )
         return ValidationPlan(
             validator=PydanticValidator(
                 request.model,
                 strict=request.validation.strict,
+                from_attributes=from_attributes,
             ),
             model=request.model,
             strict=request.validation.strict,
+            from_attributes=from_attributes,
         )
 
     def _plan_rejection(
@@ -436,6 +583,7 @@ class QueryPlanner(Generic[T]):
         *,
         execution_id: str,
     ) -> RejectionPlan:
+        del execution_id
         policy_cls = _POLICIES[request.rejection.policy]
         return RejectionPlan(
             policy=policy_cls(),

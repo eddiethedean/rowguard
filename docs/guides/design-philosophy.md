@@ -28,7 +28,7 @@ behavior; only DB awaits are asynchronous.
 
 | Non-goal | Alternative |
 | --- | --- |
-| Becoming an ORM | Use SQLAlchemy ORM; RowGuard ORM integration is planned for 0.5 |
+| Becoming an ORM | Use SQLAlchemy ORM; RowGuard validates ORM/SQLModel reads in 0.5 |
 | Replacing Pydantic / SQLModel | Compose with them |
 | Silent “best effort” filtering | Use rejection policies and statistics |
 | Hiding pushdown surprises | Document `use_sqlrules` defaults |

@@ -14,3 +14,4 @@ class RejectedRow:
     validation_error: ValidationError | None
     adaptation_error: Exception | None = None
     raw_row: object | None = None
+    source_identity: Mapping[str, object] | None = None

@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0] — 2026-07-10
+
+### Added
+
+- SQLAlchemy ORM mapped classes as `table=` / `source=` with SQLRules pushdown
+- Projected ORM selects via `execute(statement=select(...), source=MappedClass)`
+- Single-entity adaptation (`ORMEntityAdapter`) for `select(MappedClass)`
+- Opt-in `orm_validation="from_attributes"` with unloaded-attribute guards
+- `unloaded_attributes="error"` (only supported policy in 0.5)
+- Optional `attribute_map` for entity attribute → model field remapping
+- `RejectedRow.source_identity` primary-key dict (no live entity retention)
+- SQLModel table-source support via optional `rowguard[sqlmodel]`
+- Examples: `orm_projected.py`, `orm_entity.py`, `sqlmodel_basic.py`
+- User guide: [ORM and SQLModel](docs/guides/orm-sqlmodel.md)
+
+### Notes
+
+- Prefer column projections for strict read-contract validation
+- Multi-entity and entity+scalar shapes are rejected at plan time
+- Relationship traversal, write-back, and lazy-load-enabled validation remain out of scope
+
 ## [0.4.0] — 2026-07-10
 
 ### Added

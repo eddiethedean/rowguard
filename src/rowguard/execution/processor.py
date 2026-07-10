@@ -81,7 +81,12 @@ def process_row(
     adaptation_time_ns = perf_counter_ns() - started
 
     started = perf_counter_ns()
-    outcome = plan.validator.validate(adapted.mapping)
+    subject = (
+        adapted.attributes_subject
+        if adapted.attributes_subject is not None
+        else adapted.mapping
+    )
+    outcome = plan.validator.validate(subject)
     validation_time_ns = perf_counter_ns() - started
 
     if outcome.accepted:
@@ -102,6 +107,7 @@ def process_row(
         mapping=adapted.mapping,
         validation_error=outcome.error,
         raw_row=adapted.raw_row,
+        source_identity=adapted.source_identity,
     )
     return _handle_rejection(
         plan,

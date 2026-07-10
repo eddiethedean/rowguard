@@ -30,7 +30,8 @@ Nothing is silently dropped.
 
 ## What RowGuard is not
 
-- Not an ORM (ORM integration planned for **0.5.0**)
+- Not an ORM (ORM / SQLModel reads are supported in **0.5.0**; RowGuard still
+  does not own mapping or persistence)
 - Not a migration tool
 - Not a replacement for SQLAlchemy or Pydantic
 - Not a silent “best effort” validator

@@ -6,6 +6,8 @@ from typing import Any, Literal
 
 RejectionPolicyName = Literal["raise", "collect", "skip"]
 DiagnosticsLevel = Literal["off", "summary", "detailed"]
+OrmValidationMode = Literal["mapping", "from_attributes"]
+UnloadedAttributesPolicy = Literal["error"]
 
 
 @dataclass(frozen=True, slots=True)
@@ -20,6 +22,7 @@ class PushdownConfig:
 class ValidationConfig:
     strict: bool | None = None
     context: Mapping[str, object] | None = None
+    from_attributes: bool = False
 
 
 @dataclass(frozen=True, slots=True)
@@ -36,6 +39,9 @@ class DiagnosticsConfig:
 @dataclass(frozen=True, slots=True)
 class AdapterConfig:
     field_map: Mapping[str, str] | None = None
+    attribute_map: Mapping[str, str] | None = None
+    orm_validation: OrmValidationMode = "mapping"
+    unloaded_attributes: UnloadedAttributesPolicy = "error"
 
 
 @dataclass(frozen=True, slots=True)

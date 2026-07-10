@@ -36,7 +36,11 @@ class PushdownPlan:
 class AdapterPlan:
     adapter: RowAdapter
     field_map: Mapping[str, str] | None = None
+    attribute_map: Mapping[str, str] | None = None
     expected_keys: tuple[str, ...] = ()
+    result_shape: str = "projection"
+    orm_validation: str = "mapping"
+    unloaded_attributes: str = "error"
 
 
 @dataclass(frozen=True, slots=True)
@@ -44,6 +48,7 @@ class ValidationPlan(Generic[T]):
     validator: Validator[T]
     model: type[T]
     strict: bool | None = None
+    from_attributes: bool = False
 
 
 @dataclass(frozen=True, slots=True)

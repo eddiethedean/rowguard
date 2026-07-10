@@ -26,7 +26,7 @@ jobs:
       - name: Install package
         run: |
           python -m pip install --upgrade pip
-          pip install -e ".[dev,async]"
+          pip install -e ".[dev,async,sqlmodel]"
 
       - name: Ruff
         run: ruff check .
@@ -42,6 +42,9 @@ jobs:
           python examples/basic.py
           python examples/streaming.py
           python examples/async_basic.py
+          python examples/orm_projected.py
+          python examples/orm_entity.py
+          python examples/sqlmodel_basic.py
 
   docs:
     runs-on: ubuntu-latest

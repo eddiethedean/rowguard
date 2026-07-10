@@ -17,10 +17,12 @@ from rowguard.planning.compiler import QueryPlanner
 from rowguard.planning.config import (
     AdapterConfig,
     DiagnosticsConfig,
+    OrmValidationMode,
     PushdownConfig,
     RejectionConfig,
     RejectionPolicyName,
     StreamingConfig,
+    UnloadedAttributesPolicy,
     ValidationConfig,
 )
 from rowguard.planning.execution_plan import (
@@ -54,6 +56,7 @@ def _build_request(
     statement: Any | None = None,
     where: Iterable[Any] = (),
     field_map: Mapping[str, str] | None = None,
+    attribute_map: Mapping[str, str] | None = None,
     column_map: Mapping[str, Any] | None = None,
     parameters: Mapping[str, object] | None = None,
     on_reject: str = "raise",
@@ -61,11 +64,23 @@ def _build_request(
     compiled_rules: Mapping[str, Any] | None = None,
     pushdown_source: Any | None = None,
     strict: bool | None = None,
+    orm_validation: OrmValidationMode = "mapping",
+    unloaded_attributes: UnloadedAttributesPolicy = "error",
 ) -> QueryRequest[T]:
     if on_reject not in _POLICIES:
         raise ConfigurationError(
             f"Unsupported on_reject policy: {on_reject!r}. "
             f"Supported: {', '.join(sorted(_POLICIES))}"
+        )
+    if orm_validation not in {"mapping", "from_attributes"}:
+        raise ConfigurationError(
+            f"Unsupported orm_validation: {orm_validation!r}. "
+            "Supported: mapping, from_attributes"
+        )
+    if unloaded_attributes != "error":
+        raise ConfigurationError(
+            f"Unsupported unloaded_attributes: {unloaded_attributes!r}. "
+            "Supported in 0.5: error"
         )
     policy: RejectionPolicyName = on_reject  # type: ignore[assignment]
     return QueryRequest(
@@ -80,10 +95,18 @@ def _build_request(
             column_map=column_map,
             compiled_rules=compiled_rules,
         ),
-        validation=ValidationConfig(strict=strict),
+        validation=ValidationConfig(
+            strict=strict,
+            from_attributes=orm_validation == "from_attributes",
+        ),
         rejection=RejectionConfig(policy=policy),
         diagnostics=DiagnosticsConfig(),
-        adapter=AdapterConfig(field_map=field_map),
+        adapter=AdapterConfig(
+            field_map=field_map,
+            attribute_map=attribute_map,
+            orm_validation=orm_validation,
+            unloaded_attributes=unloaded_attributes,
+        ),
     )
 
 
@@ -95,6 +118,7 @@ def compile_plan(
     source: Any | None = None,
     where: Iterable[Any] = (),
     field_map: Mapping[str, str] | None = None,
+    attribute_map: Mapping[str, str] | None = None,
     column_map: Mapping[str, Any] | None = None,
     parameters: Mapping[str, object] | None = None,
     on_reject: str = "raise",
@@ -102,6 +126,8 @@ def compile_plan(
     compiled_rules: Mapping[str, Any] | None = None,
     pushdown_source: Any | None = None,
     strict: bool | None = None,
+    orm_validation: OrmValidationMode = "mapping",
+    unloaded_attributes: UnloadedAttributesPolicy = "error",
 ) -> ExecutionPlan[T]:
     """Compile an immutable execution plan without running a query."""
     if table is not None and source is not None:
@@ -114,6 +140,7 @@ def compile_plan(
         statement=statement,
         where=where,
         field_map=field_map,
+        attribute_map=attribute_map,
         column_map=column_map,
         parameters=parameters,
         on_reject=on_reject,
@@ -121,6 +148,8 @@ def compile_plan(
         compiled_rules=compiled_rules,
         pushdown_source=pushdown_source,
         strict=strict,
+        orm_validation=orm_validation,
+        unloaded_attributes=unloaded_attributes,
     )
     return QueryPlanner[T]().compile(request)
 
@@ -133,25 +162,34 @@ def select(
     model: type[T],
     where: Iterable[Any] = (),
     field_map: Mapping[str, str] | None = None,
+    attribute_map: Mapping[str, str] | None = None,
     column_map: Mapping[str, Any] | None = None,
     parameters: Mapping[str, object] | None = None,
     on_reject: str = "raise",
     use_sqlrules: bool = True,
     compiled_rules: Mapping[str, Any] | None = None,
     strict: bool | None = None,
+    orm_validation: OrmValidationMode = "mapping",
+    unloaded_attributes: UnloadedAttributesPolicy = "error",
 ) -> QueryResult[T]:
-    """Build and execute a validation-first SQLAlchemy SELECT query."""
+    """Build and execute a validation-first SQLAlchemy SELECT query.
+
+    ``table`` may be a Core ``Table`` or an ORM / SQLModel mapped class.
+    """
     plan = compile_plan(
         model=model,
         table=table,
         where=where,
         field_map=field_map,
+        attribute_map=attribute_map,
         column_map=column_map,
         parameters=parameters,
         on_reject=on_reject,
         use_sqlrules=use_sqlrules,
         compiled_rules=compiled_rules,
         strict=strict,
+        orm_validation=orm_validation,
+        unloaded_attributes=unloaded_attributes,
     )
     context = SyncExecutionContext(session=session, connection=connection)
     return SyncExecutionEngine[T]().execute(plan, context)
@@ -166,12 +204,15 @@ def execute(
     source: Any | None = None,
     where: Iterable[Any] = (),
     field_map: Mapping[str, str] | None = None,
+    attribute_map: Mapping[str, str] | None = None,
     column_map: Mapping[str, Any] | None = None,
     parameters: Mapping[str, object] | None = None,
     on_reject: str = "raise",
     use_sqlrules: bool = True,
     compiled_rules: Mapping[str, Any] | None = None,
     strict: bool | None = None,
+    orm_validation: OrmValidationMode = "mapping",
+    unloaded_attributes: UnloadedAttributesPolicy = "error",
 ) -> QueryResult[T]:
     """Execute an existing SQLAlchemy statement and validate every row."""
     plan = compile_plan(
@@ -180,6 +221,7 @@ def execute(
         source=source,
         where=where,
         field_map=field_map,
+        attribute_map=attribute_map,
         column_map=column_map,
         parameters=parameters,
         on_reject=on_reject,
@@ -187,6 +229,8 @@ def execute(
         compiled_rules=compiled_rules,
         pushdown_source=source,
         strict=strict,
+        orm_validation=orm_validation,
+        unloaded_attributes=unloaded_attributes,
     )
     context = SyncExecutionContext(session=session, connection=connection)
     return SyncExecutionEngine[T]().execute(plan, context)
@@ -202,12 +246,15 @@ def stream(
     source: Any | None = None,
     where: Iterable[Any] = (),
     field_map: Mapping[str, str] | None = None,
+    attribute_map: Mapping[str, str] | None = None,
     column_map: Mapping[str, Any] | None = None,
     parameters: Mapping[str, object] | None = None,
     on_reject: str = "raise",
     use_sqlrules: bool = True,
     compiled_rules: Mapping[str, Any] | None = None,
     strict: bool | None = None,
+    orm_validation: OrmValidationMode = "mapping",
+    unloaded_attributes: UnloadedAttributesPolicy = "error",
     yield_per: int | None = None,
     observers: Sequence[StreamObserver] | None = None,
 ) -> StreamResult[T]:
@@ -230,6 +277,7 @@ def stream(
         source=source,
         where=where,
         field_map=field_map,
+        attribute_map=attribute_map,
         column_map=column_map,
         parameters=parameters,
         on_reject=on_reject,
@@ -237,6 +285,8 @@ def stream(
         compiled_rules=compiled_rules,
         pushdown_source=source if statement is not None else None,
         strict=strict,
+        orm_validation=orm_validation,
+        unloaded_attributes=unloaded_attributes,
     )
     context = SyncExecutionContext(session=session, connection=connection)
     return SyncStreamEngine[T]().open(
@@ -255,12 +305,15 @@ async def aselect(
     model: type[T],
     where: Iterable[Any] = (),
     field_map: Mapping[str, str] | None = None,
+    attribute_map: Mapping[str, str] | None = None,
     column_map: Mapping[str, Any] | None = None,
     parameters: Mapping[str, object] | None = None,
     on_reject: str = "raise",
     use_sqlrules: bool = True,
     compiled_rules: Mapping[str, Any] | None = None,
     strict: bool | None = None,
+    orm_validation: OrmValidationMode = "mapping",
+    unloaded_attributes: UnloadedAttributesPolicy = "error",
 ) -> QueryResult[T]:
     """Async variant of ``select`` using AsyncSession or AsyncConnection."""
     plan = compile_plan(
@@ -268,12 +321,15 @@ async def aselect(
         table=table,
         where=where,
         field_map=field_map,
+        attribute_map=attribute_map,
         column_map=column_map,
         parameters=parameters,
         on_reject=on_reject,
         use_sqlrules=use_sqlrules,
         compiled_rules=compiled_rules,
         strict=strict,
+        orm_validation=orm_validation,
+        unloaded_attributes=unloaded_attributes,
     )
     context = AsyncExecutionContext(session=session, connection=connection)
     return await AsyncExecutionEngine[T]().execute(plan, context)
@@ -288,12 +344,15 @@ async def aexecute(
     source: Any | None = None,
     where: Iterable[Any] = (),
     field_map: Mapping[str, str] | None = None,
+    attribute_map: Mapping[str, str] | None = None,
     column_map: Mapping[str, Any] | None = None,
     parameters: Mapping[str, object] | None = None,
     on_reject: str = "raise",
     use_sqlrules: bool = True,
     compiled_rules: Mapping[str, Any] | None = None,
     strict: bool | None = None,
+    orm_validation: OrmValidationMode = "mapping",
+    unloaded_attributes: UnloadedAttributesPolicy = "error",
 ) -> QueryResult[T]:
     """Async variant of ``execute`` using AsyncSession or AsyncConnection."""
     plan = compile_plan(
@@ -302,6 +361,7 @@ async def aexecute(
         source=source,
         where=where,
         field_map=field_map,
+        attribute_map=attribute_map,
         column_map=column_map,
         parameters=parameters,
         on_reject=on_reject,
@@ -309,6 +369,8 @@ async def aexecute(
         compiled_rules=compiled_rules,
         pushdown_source=source,
         strict=strict,
+        orm_validation=orm_validation,
+        unloaded_attributes=unloaded_attributes,
     )
     context = AsyncExecutionContext(session=session, connection=connection)
     return await AsyncExecutionEngine[T]().execute(plan, context)
@@ -324,12 +386,15 @@ def astream(
     source: Any | None = None,
     where: Iterable[Any] = (),
     field_map: Mapping[str, str] | None = None,
+    attribute_map: Mapping[str, str] | None = None,
     column_map: Mapping[str, Any] | None = None,
     parameters: Mapping[str, object] | None = None,
     on_reject: str = "raise",
     use_sqlrules: bool = True,
     compiled_rules: Mapping[str, Any] | None = None,
     strict: bool | None = None,
+    orm_validation: OrmValidationMode = "mapping",
+    unloaded_attributes: UnloadedAttributesPolicy = "error",
     yield_per: int | None = None,
     observers: Sequence[StreamObserver] | None = None,
 ) -> AsyncStreamResult[T]:
@@ -352,6 +417,7 @@ def astream(
         source=source,
         where=where,
         field_map=field_map,
+        attribute_map=attribute_map,
         column_map=column_map,
         parameters=parameters,
         on_reject=on_reject,
@@ -359,6 +425,8 @@ def astream(
         compiled_rules=compiled_rules,
         pushdown_source=source if statement is not None else None,
         strict=strict,
+        orm_validation=orm_validation,
+        unloaded_attributes=unloaded_attributes,
     )
     context = AsyncExecutionContext(session=session, connection=connection)
     return AsyncStreamEngine[T]().open(
