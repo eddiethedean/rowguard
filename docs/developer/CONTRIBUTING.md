@@ -75,27 +75,29 @@ Do not implement major architectural changes only in code.
 Clone the repository and create a virtual environment.
 
 ```bash
-git clone <repository-url>
+git clone https://github.com/eddiethedean/rowguard.git
 cd rowguard
 
 python -m venv .venv
-source .venv/bin/activate
+source .venv/bin/activate          # Windows: .venv\Scripts\activate
 ```
 
 Install development dependencies:
 
 ```bash
 python -m pip install --upgrade pip
-python -m pip install -e ".[dev]"
+python -m pip install -e ".[dev,async]"
 ```
 
 Additional extras may include:
 
 ```bash
-python -m pip install -e ".[dev,postgresql,async,sqlmodel]"
+python -m pip install -e ".[dev,postgresql,async]"
+python -m pip install -e ".[docs]"
 ```
 
-Exact extras should follow the repository's `pyproject.toml`.
+Exact extras are defined in `pyproject.toml` (`dev`, `docs`, `async`, `postgresql`).
+There is **no** `sqlmodel` extra until 0.5.0.
 
 To build documentation locally (Sphinx / Read the Docs):
 
@@ -718,7 +720,10 @@ Use the repository's documented private security contact.
 
 # Code of Conduct
 
-Contributors must follow the project's Code of Conduct.
+Contributors must follow the project's [Code of Conduct](../../CODE_OF_CONDUCT.md).
+
+Security reports: see [SECURITY.md](../../SECURITY.md) (do not open public issues
+for vulnerabilities).
 
 Technical disagreement should remain respectful, specific, and grounded in the
 project's goals and evidence.

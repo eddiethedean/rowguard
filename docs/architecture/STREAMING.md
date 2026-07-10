@@ -79,13 +79,15 @@ Bare ``for model in stream`` also closes the underlying result when the loop
 ends or breaks. Prefer the context manager when combining early exit with
 post-stream inspection of ``statistics`` / ``rejected``.
 
-Future async API:
+Shipped async API (0.4.0):
 
 ```python
 async with rowguard.astream(...) as stream:
     async for model in stream:
         ...
 ```
+
+See [Async architecture](ASYNC.md) and the [async guide](../guides/async.md).
 
 ---
 
@@ -260,7 +262,6 @@ Initial release:
 
 Deferred:
 
-- async streaming
 - adaptive batching
 - resumable execution
 - distributed streaming

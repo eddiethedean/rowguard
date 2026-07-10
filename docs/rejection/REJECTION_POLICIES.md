@@ -1,5 +1,14 @@
 # REJECTION_POLICIES.md
 
+:::{admonition} Status note (0.4.0)
+:class: tip
+
+**Shipped today:** `raise`, `collect`, `skip`.  
+**Not shipped (design for 0.6.0):** `callback`, `quarantine`, `log`.  
+See [Supported vs planned](../project/supported.md) and the
+[rejection policies guide](../guides/rejection-policies.md).
+:::
+
 # RowGuard Rejection Policies
 
 ## Purpose
@@ -247,18 +256,22 @@ Tests should verify:
 
 # MVP Scope
 
-Initial implementation:
+**Shipped in 0.4.0:**
 
 - raise
 - collect
 - skip
-- callback
-- quarantine
-- threshold support
 - statistics
 - diagnostics
 
-Deferred:
+**Target for 0.6.0 (not shipped):**
+
+- callback
+- quarantine
+- log
+- threshold support
+
+Deferred further:
 
 - retry queues
 - distributed quarantine

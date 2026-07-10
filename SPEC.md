@@ -239,20 +239,29 @@ with rowguard.stream(
     statistics = stream.statistics
 ```
 
-`StreamResult` is separate from `QueryResult`. Async streaming is deferred to
-0.4.0.
+`StreamResult` is separate from `QueryResult`. Async streaming shipped in
+**0.4.0** as `astream` / `AsyncStreamResult` with the same rejection and
+lifecycle semantics.
 
 ------------------------------------------------------------------------
 
 # Async
 
-Future API (0.4.0):
+Shipped in **0.4.0**:
 
 ``` python
 await rowguard.aselect(...)
+await rowguard.aexecute(...)
+
+async with rowguard.astream(...) as stream:
+    async for model in stream:
+        ...
 ```
 
-Async behavior should mirror synchronous behavior.
+Async behavior mirrors synchronous behavior for validation and rejection
+policies. Await only DB I/O; Pydantic validation remains synchronous on the
+event loop. See the docs site page **Supported vs planned** and
+`docs/architecture/ASYNC.md`.
 
 ------------------------------------------------------------------------
 

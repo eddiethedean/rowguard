@@ -33,9 +33,13 @@ Yes — `validate_rows(rows=..., model=...)` validates mappings only.
 
 - User guide: [API.md](../api.md)
 - Autodoc: [Python API reference](../reference/api.md)
+- Errors: [Error catalog](../reference/errors.md)
 - Spec: [SPEC.md](../spec.md)
+- Scope: [Supported vs planned](../project/supported.md)
 
 ## How do I report a bug?
 
 Open an issue at [github.com/eddiethedean/rowguard](https://github.com/eddiethedean/rowguard/issues).
 Include driver, RowGuard version, and a minimal repro when possible.
+
+Security issues: see [Security policy](../project/security.md) (do not file public issues for vulnerabilities).

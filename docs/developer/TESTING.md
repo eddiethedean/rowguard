@@ -2,6 +2,17 @@
 
 # RowGuard Testing Strategy
 
+:::{admonition} Current vs target matrix
+:class: tip
+
+**Current 0.4 CI focus:** SQLAlchemy Core, sync + async (sqlite / aiosqlite),
+buffered + streaming, rejection policies `raise` / `collect` / `skip`.
+
+ORM, SQLModel, callback, and quarantine coverage are **target** layers for later
+milestones—not required to land Core PRs today. See
+[Supported vs planned](../project/supported.md).
+:::
+
 ## Purpose
 
 RowGuard sits at the boundary between SQLAlchemy, SQLRules, Pydantic, database
@@ -22,8 +33,8 @@ The central testing guarantee is:
 - Test public behavior before implementation details.
 - Test accepted and rejected paths equally.
 - Test real database execution, not only compiled SQL.
-- Keep Core, ORM, SQLModel, raw SQL, sync, async, buffered, and streaming
-  semantics aligned.
+- Keep Core (and later ORM/SQLModel/raw SQL), sync, async, buffered, and streaming
+  semantics aligned for the layers that are in scope for the PR.
 - Preserve complete Pydantic error information.
 - Fail on ambiguous mappings rather than testing permissive guesses.
 - Use deterministic fixtures.

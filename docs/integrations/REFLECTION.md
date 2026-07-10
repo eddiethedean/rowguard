@@ -1,5 +1,12 @@
 # REFLECTION.md
 
+:::{admonition} Status: not shipped in 0.4.0
+:class: warning
+
+This document is a **design draft for 0.8.0**. Schema reflection helpers are
+**not available** yet. See [Supported vs planned](../project/supported.md).
+:::
+
 # RowGuard Reflection
 
 ## Purpose

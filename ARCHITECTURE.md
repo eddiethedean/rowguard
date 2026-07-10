@@ -261,5 +261,5 @@ The architecture should make it easy to:
 -   integrate SQLRules
 -   validate every row
 -   stream millions of rows
--   add async support
+-   first-class async execution (shipped in 0.4.0)
 -   extend behavior without changing the core

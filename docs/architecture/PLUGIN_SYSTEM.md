@@ -1,5 +1,12 @@
 # PLUGIN_SYSTEM.md
 
+:::{admonition} Status: not shipped in 0.4.0
+:class: warning
+
+This document is a **design draft for 0.7.0**. The plugin system is **not
+available** yet. See [Supported vs planned](../project/supported.md).
+:::
+
 # RowGuard Plugin System
 
 ## Purpose

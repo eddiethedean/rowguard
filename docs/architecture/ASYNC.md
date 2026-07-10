@@ -153,13 +153,16 @@ read models for hot async paths; offload only if application code chooses to.
 
 # Statistics
 
-Statistics should mirror synchronous execution:
+Statistics should mirror synchronous execution (`QueryStatistics`):
 
 - rows_read
-- rows_valid
+- rows_validated
+- rows_accepted
 - rows_rejected
-- execution_time
-- validation_time
+- execution_time_ns
+- adaptation_time_ns
+- validation_time_ns
+- rejection_time_ns
 
 ---
 

@@ -1,12 +1,21 @@
 # ORM.md
 
+:::{admonition} Status: not shipped in 0.4.0
+:class: warning
+
+This document is a **design draft for 0.5.0**. SQLAlchemy ORM mapped-class
+integration is **not available** yet. 0.4 supports SQLAlchemy Core `Table` /
+`Select` only. See [Supported vs planned](../project/supported.md).
+:::
+
 # RowGuard SQLAlchemy ORM Integration
 
 ## Purpose
 
-RowGuard supports SQLAlchemy ORM applications without becoming an ORM itself.
+RowGuard is designed to support SQLAlchemy ORM applications without becoming an
+ORM itself. **This integration is planned for 0.5.0 and is not shipped in 0.4.**
 
-The ORM integration allows RowGuard to:
+When shipped, the ORM integration will allow RowGuard to:
 
 - Query mapped classes through SQLAlchemy.
 - Validate selected database values into Pydantic models.

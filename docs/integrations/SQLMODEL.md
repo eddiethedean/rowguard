@@ -1,11 +1,20 @@
 # SQLMODEL.md
 
+:::{admonition} Status: not shipped in 0.4.0
+:class: warning
+
+This document is a **design draft for 0.5.0**. SQLModel integration is **not
+available** yet. See [Supported vs planned](../project/supported.md) and
+[Why not SQLModel (positioning)](WHY_NOT_SQLMODEL.md).
+:::
+
 # RowGuard SQLModel Integration
 
 ## Purpose
 
 RowGuard is designed to work with SQLModel applications while solving a
-different problem from SQLModel itself.
+different problem from SQLModel itself. **This integration is planned for 0.5.0
+and is not shipped in 0.4.**
 
 SQLModel combines Pydantic and SQLAlchemy to simplify database model definition,
 persistence, and querying. RowGuard adds a validation-first read layer that

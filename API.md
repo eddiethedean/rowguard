@@ -270,6 +270,19 @@ event loop and can block under heavy models. Stream observers remain sync
 callables. Async reject handlers (callback / quarantine) are not shipped in
 0.4.0.
 
+## Errors
+
+Common public exceptions (see also the docs [error catalog](https://rowguard.readthedocs.io/en/latest/reference/errors.html)):
+
+-   `ConfigurationError` — invalid call configuration
+-   `PlanningError` — plan-time failure
+-   `QueryExecutionError` — execution / closed-stream failures
+-   `RowValidationError` — raise-policy validation failure
+-   `RowAdaptationError` — raise-policy adaptation failure
+
+Default `use_sqlrules=True` may filter invalid candidates in SQL so they never
+appear in `rejected`. See the SQLRules pushdown guide on the docs site.
+
 ## Design Guidelines
 
 -   Return immutable result objects where practical.

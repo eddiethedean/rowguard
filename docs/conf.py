@@ -43,6 +43,7 @@ exclude_patterns = [
     "requirements.txt",
     "README.md",
     "READTHEDOCS.md",
+    "readme.md",  # root README wrapper; linked from GitHub, not RTD nav
     # Prefer project/* wrappers; keep legacy root wrappers out of the toctree.
     "changelog.md",
     "roadmap.md",

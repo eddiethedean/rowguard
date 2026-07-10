@@ -1,12 +1,20 @@
 # RAW_SQL.md
 
+:::{admonition} Status: not shipped in 0.4.0
+:class: warning
+
+This document is a **design draft for 0.8.0**. First-class raw `text()` support
+is **not available** yet. 0.4 works with SQLAlchemy `Select` / `Table` sources.
+See [Supported vs planned](../project/supported.md).
+:::
+
 # RowGuard Raw SQL Integration
 
 ## Purpose
 
-RowGuard primarily targets SQLAlchemy Core and ORM expressions. However, many applications use handwritten SQL for reporting, analytics, legacy systems, or performance tuning.
+RowGuard primarily targets SQLAlchemy Core expressions. However, many applications use handwritten SQL for reporting, analytics, legacy systems, or performance tuning.
 
-RowGuard supports raw SQL while preserving its central guarantee:
+**When shipped**, RowGuard will support raw SQL while preserving its central guarantee:
 
 > Every returned row is explicitly validated against the requested Pydantic model.
 

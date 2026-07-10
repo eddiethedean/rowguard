@@ -11,8 +11,8 @@
   <p class="rg-hero-title">Validation-first queries that never silently drop bad rows</p>
   <p class="rg-lead">Execute SQLAlchemy queries, validate every returned row against a Pydantic model, and handle rejections explicitly—with the same semantics for buffered, streaming, sync, and async APIs.</p>
   <p>
-    <a class="rg-hero-cta" href="guides/quickstart.html">Quickstart →</a>
-    <a class="rg-hero-cta rg-hero-cta--ghost" href="guides/start-here.html" style="margin-left:0.75rem">Start here</a>
+    <a class="rg-hero-cta" href="guides/start-here.html">Start here →</a>
+    <a class="rg-hero-cta rg-hero-cta--ghost" href="guides/quickstart.html" style="margin-left:0.75rem">Quickstart</a>
   </p>
 </div>
 ```
@@ -32,6 +32,16 @@ Install RowGuard and run your first validated `select` / `stream` in a few minut
 **Open quickstart →**
 :::
 
+:::{grid-item-card} SQLRules defaults
+:link: guides/sqlrules-pushdown
+:link-type: doc
+
+Why invalid rows can “disappear” with the default `use_sqlrules=True`—and when to turn pushdown off.
+
++++
+**Read pushdown guide →**
+:::
+
 :::{grid-item-card} Async & streaming
 :link: guides/async
 :link-type: doc
@@ -42,24 +52,14 @@ Use `aselect` / `astream` with `AsyncSession`, or stream large results without b
 **Async guide →**
 :::
 
-:::{grid-item-card} Rejection policies
-:link: guides/rejection-policies
+:::{grid-item-card} What is shipped?
+:link: project/supported
 :link-type: doc
 
-Choose `raise`, `collect`, or `skip`—and understand how statistics and retained rejections differ.
+0.4 vs planned 0.5/0.6 features. Prefer this page over design drafts in the sidebar.
 
 +++
-**Policy guide →**
-:::
-
-:::{grid-item-card} Architecture
-:link: architecture_overview
-:link-type: doc
-
-How planning, SQLRules pushdown, adapters, validation, and results fit together.
-
-+++
-**Read architecture →**
+**Supported vs planned →**
 :::
 
 ::::
@@ -70,9 +70,15 @@ How planning, SQLRules pushdown, adapters, validation, and results fit together.
 Keep your `Table` / `Select` and sessions. RowGuard adds planning, validation, and rejection handling around them—it does not replace SQLAlchemy.
 :::
 
+:::{admonition} Design docs in the sidebar
+:class: caution
+
+Pages under **Future / design** describe planned work. They are **not shipped** in {{ release }}. See [Supported vs planned](project/supported.md).
+:::
+
 ```{raw} html
 <div class="rg-callout">
-  <strong>Requires</strong> Python {{ python_min }}, Pydantic v2, SQLAlchemy 2.x, and SQLRules.
+  <strong>Requires</strong> Python {{ python_min }}, Pydantic v2, SQLAlchemy 2.x, and SQLRules ≥0.4.
   Async extras: <code>pip install "rowguard[async]"</code>.
 </div>
 ```
@@ -87,6 +93,7 @@ Keep your `Table` / `Select` and sessions. RowGuard adds planning, validation, a
 guides/start-here
 guides/installation
 guides/quickstart
+guides/sqlrules-pushdown
 guides/faq
 guides/troubleshooting
 ```
@@ -98,6 +105,8 @@ guides/troubleshooting
 guides/rejection-policies
 guides/streaming
 guides/async
+guides/best-practices
+examples/index
 ```
 
 ```{toctree}
@@ -105,8 +114,9 @@ guides/async
 :caption: Reference
 
 api
-spec
 reference/api
+reference/errors
+spec
 ```
 
 ```{toctree}
@@ -114,6 +124,13 @@ reference/api
 :caption: Architecture
 
 architecture_overview
+guides/design-philosophy
+```
+
+```{toctree}
+:maxdepth: 1
+:caption: Design notes (advanced)
+
 architecture/EXECUTION_PIPELINE
 architecture/QUERY_ENGINE
 architecture/QUERY_COMPILATION
@@ -128,14 +145,7 @@ architecture/PERFORMANCE
 architecture/CACHE
 architecture/INTERNAL_API
 architecture/DESIGN_DECISIONS
-architecture/PLUGIN_SYSTEM
 architecture/DIALECT_SUPPORT
-```
-
-```{toctree}
-:maxdepth: 1
-:caption: Validation & rejection
-
 validation/PYDANTIC
 validation/TYPE_SUPPORT
 validation/VALIDATION_ERRORS
@@ -143,31 +153,41 @@ validation/PARTIAL_VALIDATION
 rejection/REJECTION_POLICIES
 rejection/REJECTION_HANDLING
 rejection/DIAGNOSTICS
-rejection/CALLBACKS
-rejection/QUARANTINE
 ```
 
 ```{toctree}
 :maxdepth: 1
-:caption: Integrations
+:caption: Integrations (shipped)
 
 integrations/CORE
+integrations/WHY_NOT_SQLMODEL
+```
+
+```{toctree}
+:maxdepth: 1
+:caption: Future / design (not shipped)
+
 integrations/ORM
 integrations/SQLMODEL
-integrations/WHY_NOT_SQLMODEL
 integrations/REFLECTION
 integrations/RAW_SQL
+rejection/CALLBACKS
+rejection/QUARANTINE
+architecture/PLUGIN_SYSTEM
 ```
 
 ```{toctree}
 :maxdepth: 1
 :caption: Project
 
+project/supported
 project/changelog
 project/roadmap
+project/security
+project/releasing
+project/code-of-conduct
 developer/CONTRIBUTING
 developer/TESTING
 developer/BENCHMARKS
 developer/MILESTONES
-readme
 ```

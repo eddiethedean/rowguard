@@ -14,9 +14,11 @@ Nothing is silently dropped.
 | You want to… | Go to |
 | --- | --- |
 | Install and run a first query | [Installation](installation.md) → [Quickstart](quickstart.md) |
+| Understand why rejected rows “disappear” | [SQLRules pushdown](sqlrules-pushdown.md) |
 | Understand rejection policies | [Rejection policies](rejection-policies.md) |
 | Stream large result sets | [Streaming guide](streaming.md) |
 | Use AsyncSession | [Async guide](async.md) |
+| See what is shipped vs planned | [Supported vs planned](../project/supported.md) |
 | Look up function signatures | [API reference](../reference/api.md) · [API guide](../api.md) |
 | Understand internals | [Architecture overview](../architecture_overview.md) |
 
@@ -28,7 +30,7 @@ Nothing is silently dropped.
 
 ## What RowGuard is not
 
-- Not an ORM
+- Not an ORM (ORM integration planned for **0.5.0**)
 - Not a migration tool
 - Not a replacement for SQLAlchemy or Pydantic
 - Not a silent “best effort” validator
@@ -38,7 +40,7 @@ Nothing is silently dropped.
 - Python {{ python_min }}
 - Pydantic v2
 - SQLAlchemy 2.x
-- SQLRules
+- SQLRules ≥ 0.4
 
 Optional: `pip install "rowguard[async]"` for `sqlite+aiosqlite` and async APIs.
 
@@ -46,4 +48,4 @@ Optional: `pip install "rowguard[async]"` for `sqlite+aiosqlite` and async APIs.
 
 1. [Install](installation.md)
 2. [Quickstart](quickstart.md)
-3. Skim the [FAQ](faq.md) if something surprises you
+3. Skim [SQLRules pushdown](sqlrules-pushdown.md) and the [FAQ](faq.md)

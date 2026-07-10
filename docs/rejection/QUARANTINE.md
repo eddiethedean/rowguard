@@ -1,5 +1,13 @@
 # QUARANTINE.md
 
+:::{admonition} Status: not shipped in 0.4.0
+:class: warning
+
+This document is a **design draft for 0.6.0**. Quarantine rejection policies are
+**not available** yet. Shipped policies are `raise`, `collect`, and `skip`.
+See [Supported vs planned](../project/supported.md).
+:::
+
 # RowGuard Quarantine
 
 ## Purpose
