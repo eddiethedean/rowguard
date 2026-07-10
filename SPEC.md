@@ -203,12 +203,13 @@ because Pydantic remains the source of truth.
 
 # Supported Inputs
 
-Current (0.2.0):
+Current (0.3.0):
 
 -   SQLAlchemy Table
 -   SQLAlchemy Select
 -   SQLAlchemy Session
 -   SQLAlchemy Connection
+-   Buffered (`select` / `execute`) and streaming (`stream`) result modes
 
 Future:
 

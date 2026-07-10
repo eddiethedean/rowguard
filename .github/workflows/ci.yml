@@ -38,7 +38,9 @@ jobs:
         run: pytest --cov=rowguard --cov-report=term-missing
 
       - name: Example smoke
-        run: python examples/basic.py
+        run: |
+          python examples/basic.py
+          python examples/streaming.py
 
   benchmark-smoke:
     runs-on: ubuntu-latest
