@@ -13,6 +13,22 @@ class ConfigurationError(RowGuardError):
     """Invalid or incompatible RowGuard configuration."""
 
 
+class PlanningError(ConfigurationError):
+    """Planning-stage failure with optional stage context."""
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        stage: str | None = None,
+        execution_id: str | None = None,
+    ) -> None:
+        self.stage = stage
+        self.execution_id = execution_id
+        prefix = f"[{stage}] " if stage else ""
+        super().__init__(f"{prefix}{message}")
+
+
 class QueryExecutionError(RowGuardError):
     """SQLAlchemy query execution failed."""
 

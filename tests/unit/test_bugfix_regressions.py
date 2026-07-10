@@ -9,10 +9,18 @@ from sqlalchemy import bindparam, select
 
 import rowguard
 from rowguard.errors import RowAdaptationError, RowValidationError
+from rowguard.execution.context import SyncExecutionContext
 from rowguard.execution.processor import process_row
 from rowguard.execution.sync import SyncExecutionEngine
 from rowguard.planning.compiler import QueryPlanner
-from rowguard.planning.execution_plan import ExecutionPlan
+from rowguard.planning.config import PushdownConfig, RejectionConfig
+from rowguard.planning.execution_plan import (
+    AdapterPlan,
+    ExecutionPlan,
+    PushdownPlan,
+    RejectionPlan,
+    ValidationPlan,
+)
 from rowguard.planning.request import QueryRequest
 from rowguard.rejection.policies import CollectPolicy
 from rowguard.validation.pydantic import PydanticValidator
@@ -34,9 +42,13 @@ def test_adaptation_failure_records_timing() -> None:
     plan = ExecutionPlan(
         statement=None,
         model=UserRead,
-        adapter=SlowFailAdapter(),  # type: ignore[arg-type]
-        validator=PydanticValidator(UserRead),
-        rejection_policy=CollectPolicy(),
+        pushdown_plan=PushdownPlan(enabled=False),
+        adapter_plan=AdapterPlan(adapter=SlowFailAdapter()),  # type: ignore[arg-type]
+        validation_plan=ValidationPlan(
+            validator=PydanticValidator(UserRead),
+            model=UserRead,
+        ),
+        rejection_plan=RejectionPlan(policy=CollectPolicy(), policy_name="collect"),
         use_sqlrules=False,
     )
     processed = process_row(row={"id": 1}, index=0, plan=plan)
@@ -80,12 +92,14 @@ def test_result_close_called_on_execute(session, users_table) -> None:
         QueryRequest(
             model=UserRead,
             source=users_table,
-            session=TrackingSession(),
-            use_sqlrules=False,
-            on_reject="collect",
+            pushdown=PushdownConfig(enabled=False),
+            rejection=RejectionConfig(policy="collect"),
         )
     )
-    SyncExecutionEngine[UserRead]().execute(plan)
+    SyncExecutionEngine[UserRead]().execute(
+        plan,
+        SyncExecutionContext(session=TrackingSession()),
+    )
     assert tracking.closed is True
 
 

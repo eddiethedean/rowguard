@@ -4,7 +4,13 @@ from pydantic import BaseModel
 
 from rowguard.adapters.sqlalchemy_row import SQLAlchemyRowAdapter
 from rowguard.execution.processor import process_row
-from rowguard.planning.execution_plan import ExecutionPlan
+from rowguard.planning.execution_plan import (
+    AdapterPlan,
+    ExecutionPlan,
+    PushdownPlan,
+    RejectionPlan,
+    ValidationPlan,
+)
 from rowguard.rejection.policies import CollectPolicy, SkipPolicy
 from rowguard.validation.pydantic import PydanticValidator
 
@@ -19,9 +25,13 @@ def _plan(*, on_reject: str = "collect") -> ExecutionPlan[UserRead]:
     return ExecutionPlan(
         statement=None,
         model=UserRead,
-        adapter=SQLAlchemyRowAdapter(),
-        validator=PydanticValidator(UserRead),
-        rejection_policy=policy,
+        pushdown_plan=PushdownPlan(enabled=False),
+        adapter_plan=AdapterPlan(adapter=SQLAlchemyRowAdapter()),
+        validation_plan=ValidationPlan(
+            validator=PydanticValidator(UserRead),
+            model=UserRead,
+        ),
+        rejection_plan=RejectionPlan(policy=policy, policy_name=on_reject),
         use_sqlrules=False,
     )
 

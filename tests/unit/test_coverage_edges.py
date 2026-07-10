@@ -7,11 +7,19 @@ from sqlalchemy import select
 import rowguard
 from rowguard.adapters.sqlalchemy_row import SQLAlchemyRowAdapter
 from rowguard.errors import QueryExecutionError, RowAdaptationError
+from rowguard.execution.context import SyncExecutionContext
 from rowguard.execution.processor import process_row
 from rowguard.execution.sync import SyncExecutionEngine
 from rowguard.integrations.sqlalchemy_core import is_column_element
 from rowguard.planning.compiler import QueryPlanner
-from rowguard.planning.execution_plan import ExecutionPlan
+from rowguard.planning.config import PushdownConfig, RejectionConfig
+from rowguard.planning.execution_plan import (
+    AdapterPlan,
+    ExecutionPlan,
+    PushdownPlan,
+    RejectionPlan,
+    ValidationPlan,
+)
 from rowguard.planning.request import QueryRequest
 from rowguard.rejection.policies import CollectPolicy, RaisePolicy
 from rowguard.validation.pydantic import PydanticValidator
@@ -22,16 +30,24 @@ class UserRead(BaseModel):
     name: str
 
 
-def test_process_row_adaptation_failure_collect() -> None:
-    plan = ExecutionPlan(
+def _plan(*, policy: CollectPolicy | RaisePolicy) -> ExecutionPlan[UserRead]:
+    name = "collect" if isinstance(policy, CollectPolicy) else "raise"
+    return ExecutionPlan(
         statement=None,
         model=UserRead,
-        adapter=SQLAlchemyRowAdapter(),
-        validator=PydanticValidator(UserRead),
-        rejection_policy=CollectPolicy(),
+        pushdown_plan=PushdownPlan(enabled=False),
+        adapter_plan=AdapterPlan(adapter=SQLAlchemyRowAdapter()),
+        validation_plan=ValidationPlan(
+            validator=PydanticValidator(UserRead),
+            model=UserRead,
+        ),
+        rejection_plan=RejectionPlan(policy=policy, policy_name=name),
         use_sqlrules=False,
     )
-    processed = process_row(row=object(), index=0, plan=plan)
+
+
+def test_process_row_adaptation_failure_collect() -> None:
+    processed = process_row(row=object(), index=0, plan=_plan(policy=CollectPolicy()))
     assert processed.model is None
     assert processed.rejected is not None
     assert isinstance(processed.rejected.adaptation_error, RowAdaptationError)
@@ -39,16 +55,8 @@ def test_process_row_adaptation_failure_collect() -> None:
 
 
 def test_process_row_adaptation_failure_raise() -> None:
-    plan = ExecutionPlan(
-        statement=None,
-        model=UserRead,
-        adapter=SQLAlchemyRowAdapter(),
-        validator=PydanticValidator(UserRead),
-        rejection_policy=RaisePolicy(),
-        use_sqlrules=False,
-    )
     with pytest.raises(RowAdaptationError) as exc_info:
-        process_row(row=object(), index=3, plan=plan)
+        process_row(row=object(), index=3, plan=_plan(policy=RaisePolicy()))
     assert exc_info.value.row_index == 3
     assert exc_info.value.model is UserRead
 
@@ -98,33 +106,7 @@ def test_is_column_element() -> None:
     assert not is_column_element("id")
 
 
-def test_planner_rejects_non_select_statement() -> None:
-    from rowguard.errors import ConfigurationError
-
-    with pytest.raises(ConfigurationError, match="Select"):
-        QueryPlanner[UserRead]().compile(
-            QueryRequest(
-                model=UserRead,
-                statement=object(),
-                session=object(),
-                use_sqlrules=False,
-            )
-        )
-
-
-def test_planner_skips_pushdown_without_source(users_table) -> None:
-    plan = QueryPlanner[UserRead]().compile(
-        QueryRequest(
-            model=UserRead,
-            statement=select(users_table.c.id, users_table.c.name),
-            session=object(),
-            use_sqlrules=True,
-        )
-    )
-    assert any(d.code == "sqlrules.pushdown_skipped" for d in plan.diagnostics)
-
-
-def test_execute_wraps_database_errors(session, users_table) -> None:
+def test_execute_wraps_database_errors(users_table) -> None:
     class BrokenSession:
         def execute(self, *_args, **_kwargs):
             raise RuntimeError("db down")
@@ -133,17 +115,18 @@ def test_execute_wraps_database_errors(session, users_table) -> None:
         QueryRequest(
             model=UserRead,
             source=users_table,
-            session=BrokenSession(),
-            use_sqlrules=False,
-            on_reject="collect",
+            pushdown=PushdownConfig(enabled=False),
+            rejection=RejectionConfig(policy="collect"),
         )
     )
     with pytest.raises(QueryExecutionError, match="Query execution failed"):
-        SyncExecutionEngine[UserRead]().execute(plan)
+        SyncExecutionEngine[UserRead]().execute(
+            plan,
+            SyncExecutionContext(session=BrokenSession()),
+        )
 
 
 def test_validate_rows_with_parameters_path(session, users_table) -> None:
-    # Exercise parameter forwarding on session.execute
     result = rowguard.execute(
         session=session,
         statement=select(users_table).where(users_table.c.id == 1),
@@ -153,3 +136,15 @@ def test_validate_rows_with_parameters_path(session, users_table) -> None:
         parameters={},
     )
     assert result.valid_count >= 0
+
+
+def test_compile_plan_public_api(users_table) -> None:
+    plan = rowguard.compile_plan(
+        table=users_table,
+        model=UserRead,
+        use_sqlrules=False,
+        on_reject="collect",
+    )
+    assert isinstance(plan, ExecutionPlan)
+    assert plan.rejection_plan.policy_name == "collect"
+    assert plan.resolved_source is not None

@@ -29,6 +29,10 @@ loose collection of features.
 
 Deliver the smallest complete RowGuard workflow.
 
+## Status
+
+Shipped.
+
 ## Scope
 
 - Python 3.10+
@@ -81,21 +85,29 @@ result = rowguard.select(
 
 Formalize the planning/runtime boundary.
 
+## Status
+
+Shipped.
+
 ## Scope
 
-- Immutable `ExecutionPlan`
-- Normalized `QueryRequest`
+- Immutable staged `ExecutionPlan`
+- Normalized `QueryRequest` and planning configs
+  (`PushdownConfig`, `ValidationConfig`, `RejectionConfig`, …)
 - Source resolution
 - Statement planning
+- Pushdown planning (including precompiled SQLRules)
 - Adapter planning
 - Validation planning
 - Rejection planning
 - Structured planning diagnostics
-- Precompiled SQLRules support
-- Explicit pushdown maps
-- Explicit field maps
-- Better configuration errors
-- Execution plan inspection
+- Explicit pushdown maps and field maps (plan-time validation)
+- Better configuration errors (`PlanningError`)
+- Public `compile_plan()` for execution-plan inspection
+- Session/connection on `SyncExecutionContext` only (not on the plan)
+- Optional structural plan cache (opt-in; semantically equivalent to uncached)
+
+ORM / SQLModel remain out of scope here (see **0.5.0**).
 
 ## Exit Criteria
 
@@ -103,6 +115,7 @@ Formalize the planning/runtime boundary.
 - Execution does not repeat model or source inspection per row.
 - Plans are independently testable.
 - Cached and uncached planning are semantically equivalent.
+- 0.1.0 public call sites remain working.
 
 ---
 

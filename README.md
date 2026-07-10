@@ -7,8 +7,8 @@ Pydantic model, and explicitly handles rows that fail validation.
 
 ## Status
 
-**0.1.0** — sync Core foundation with SQLRules pushdown and raise/collect/skip
-rejection policies.
+**0.2.0** — staged execution planning, plan inspection, precompiled SQLRules, and
+clearer configuration errors. ORM remains deferred to 0.5.0.
 
 ## Install
 
@@ -73,16 +73,20 @@ with Session(engine) as session:
 With `use_sqlrules=True` (the default), supported constraints such as `age >= 18`
 are pushed into SQL, so invalid candidate rows may never be returned.
 
-## Public API (0.1.0)
+## Public API (0.2.0)
 
 | Function | Purpose |
 | --- | --- |
 | `select(...)` | Build and execute a table query with validation |
 | `execute(...)` | Validate rows from an existing `Select` |
 | `validate_rows(...)` | Validate mappings without SQL |
+| `compile_plan(...)` | Compile an `ExecutionPlan` without executing |
 | `stream(...)` | Deferred to 0.3.0 |
 
 Rejection policies: `raise` (default), `collect`, `skip`.
+
+Optional planning knobs: `compiled_rules=` (precompiled SQLRules), `strict=`
+(Pydantic), `field_map=` / `column_map=` (validated at plan time).
 
 ## Architecture
 

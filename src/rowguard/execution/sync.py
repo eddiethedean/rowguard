@@ -9,6 +9,7 @@ from pydantic import BaseModel
 
 from rowguard.diagnostics import Diagnostic
 from rowguard.errors import QueryExecutionError, ResultAssemblyError, RowGuardError
+from rowguard.execution.context import SyncExecutionContext
 from rowguard.execution.processor import ProcessedRow, process_row
 from rowguard.planning.execution_plan import ExecutionPlan
 from rowguard.results.query_result import QueryResult
@@ -52,14 +53,18 @@ class ExecutionState(Generic[T]):
 
 
 class SyncExecutionEngine(Generic[T]):
-    def execute(self, plan: ExecutionPlan[T]) -> QueryResult[T]:
+    def execute(
+        self,
+        plan: ExecutionPlan[T],
+        context: SyncExecutionContext,
+    ) -> QueryResult[T]:
         state = ExecutionState(plan=plan)
         state.diagnostics.extend(plan.diagnostics)
         started = perf_counter_ns()
         result: Any | None = None
 
         try:
-            result = self._execute_statement(plan)
+            result = self._execute_statement(plan, context)
             for index, row in enumerate(result):
                 processed = process_row(row=row, index=index, plan=plan)
                 if not self._consume_processed(state, processed):
@@ -120,16 +125,20 @@ class SyncExecutionEngine(Generic[T]):
             state.rejected.append(processed.rejected)
         return processed.continue_processing
 
-    def _execute_statement(self, plan: ExecutionPlan[T]) -> Any:
+    def _execute_statement(
+        self,
+        plan: ExecutionPlan[T],
+        context: SyncExecutionContext,
+    ) -> Any:
         params = dict(plan.parameters) if plan.parameters else {}
-        if plan.session is not None:
+        if context.session is not None:
             if params:
-                return plan.session.execute(plan.statement, params)
-            return plan.session.execute(plan.statement)
-        if plan.connection is not None:
+                return context.session.execute(plan.statement, params)
+            return context.session.execute(plan.statement)
+        if context.connection is not None:
             if params:
-                return plan.connection.execute(plan.statement, params)
-            return plan.connection.execute(plan.statement)
+                return context.connection.execute(plan.statement, params)
+            return context.connection.execute(plan.statement)
         raise QueryExecutionError("No session or connection available for execution")
 
     def _assemble(self, state: ExecutionState[T]) -> QueryResult[T]:

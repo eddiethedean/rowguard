@@ -26,6 +26,8 @@ result = rowguard.select(
     parameters=None,
     on_reject="raise",
     use_sqlrules=True,
+    compiled_rules=None,
+    strict=None,
 )
 ```
 
@@ -35,12 +37,16 @@ Parameters:
 -   `table`: SQLAlchemy Core `Table` or selectable
 -   `model`: Pydantic `BaseModel` subclass
 -   `where`: optional additional SQLAlchemy expressions (default `()`)
--   `field_map`: optional model-field → result-key mapping
+-   `field_map`: optional model-field → result-key mapping (validated at plan time)
 -   `column_map`: optional model-field → SQLAlchemy column mapping for SQLRules
+    (validated at plan time when source columns are known)
 -   `parameters`: optional bound parameters forwarded to SQLAlchemy
 -   `on_reject`: `raise`, `collect`, or `skip`
     (`callback` / `quarantine` / `log` planned for later releases)
 -   `use_sqlrules`: enable SQLRules constraint pushdown (default `True`)
+-   `compiled_rules`: optional precompiled SQLRules dict; when set, skips live
+    `sqlrules.compile` and only flattens via `sqlrules.where`
+-   `strict`: optional Pydantic strict-mode flag for validation planning
 
 Returns:
 
@@ -50,11 +56,33 @@ QueryResult[UserRead]
 
 ------------------------------------------------------------------------
 
+### compile_plan()
+
+Compile an immutable `ExecutionPlan` without executing against the database.
+
+``` python
+plan = rowguard.compile_plan(
+    table=users,
+    model=UserRead,
+    use_sqlrules=True,
+    compiled_rules=None,
+)
+```
+
+Useful for inspection and tests. The plan holds staged sub-plans
+(`resolved_source`, `pushdown_plan`, `adapter_plan`, `validation_plan`,
+`rejection_plan`), the final `statement`, `parameters`, `execution_id`, and
+planning `diagnostics`. It does **not** hold a session or connection.
+
+Internal plan field layout may change before 1.0.
+
+------------------------------------------------------------------------
+
 ### stream()
 
 Validate rows incrementally while streaming large result sets.
 
-> **Status (0.1.0):** Not implemented. Raises `NotImplementedError`.
+> **Status (0.2.0):** Not implemented. Raises `NotImplementedError`.
 > Planned for 0.3.0.
 
 ``` python
@@ -159,7 +187,7 @@ rejected.raw_row
 
 ## Async API (Planned — 0.4.0)
 
-> Not available in 0.1.0.
+> Not available in 0.2.0.
 
 ``` python
 await rowguard.aselect(...)

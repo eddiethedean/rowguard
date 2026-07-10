@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "rowguard"
-version = "0.1.0"
+version = "0.2.0"
 description = "Validation-first SQLAlchemy queries with Pydantic row validation."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -75,7 +75,6 @@ markers = [
 branch = true
 source = ["rowguard"]
 omit = [
-  "src/rowguard/cache.py",
   "src/rowguard/execution/streaming.py",
   "src/rowguard/integrations/sqlalchemy_orm.py",
   "src/rowguard/integrations/sqlmodel.py",
