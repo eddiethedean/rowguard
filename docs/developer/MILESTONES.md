@@ -53,7 +53,7 @@ Shipped.
   - collect
   - skip
 - Basic diagnostics
-- SQLite and PostgreSQL tests
+- SQLite integration tests (PostgreSQL CI deferred to dialect milestone)
 - Strict type checking
 - Initial benchmark baseline
 

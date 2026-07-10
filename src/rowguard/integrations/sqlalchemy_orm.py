@@ -1,5 +1,5 @@
 """Deferred ORM integration.
 
-Milestone 0.1.0 should focus on SQLAlchemy Core. Keep this module as the future
-boundary for mapped-class and entity adaptation.
+ORM mapped-class support is planned for milestone 0.5.0. Keep this module as the
+future boundary for mapped-class and entity adaptation.
 """

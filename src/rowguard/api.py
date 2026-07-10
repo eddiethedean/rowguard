@@ -98,6 +98,8 @@ def compile_plan(
     strict: bool | None = None,
 ) -> ExecutionPlan[T]:
     """Compile an immutable execution plan without running a query."""
+    if table is not None and source is not None:
+        raise ConfigurationError("Pass only one of table= or source=")
     request = _build_request(
         model=model,
         source=table if table is not None else source,
@@ -213,6 +215,14 @@ def validate_rows(
             f"Unsupported on_reject policy: {on_reject!r}. "
             f"Supported: {', '.join(sorted(_POLICIES))}"
         )
+
+    if field_map:
+        model_fields = set(model.model_fields.keys())
+        unknown = sorted(set(field_map.keys()) - model_fields)
+        if unknown:
+            raise ConfigurationError(
+                f"field_map keys are not model fields: {', '.join(unknown)}"
+            )
 
     plan: ExecutionPlan[T] = ExecutionPlan(
         statement=None,

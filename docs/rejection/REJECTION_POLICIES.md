@@ -68,7 +68,7 @@ result = rowguard.select(
     on_reject="collect",
 )
 
-print(result.accepted)
+print(result.models)
 print(result.rejected)
 ```
 

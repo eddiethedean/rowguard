@@ -11,4 +11,7 @@ class StreamResult(Generic[T], Iterator[T]):
         return self
 
     def __next__(self) -> T:
-        raise StopIteration
+        raise NotImplementedError(
+            "StreamResult is deferred to RowGuard 0.3.0; "
+            "use select()/execute() for buffered results"
+        )

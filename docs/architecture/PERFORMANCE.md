@@ -1294,37 +1294,35 @@ Deferred:
 
 # Recommended Performance Defaults
 
-Suggested defaults:
+Suggested defaults (0.2.0 public knobs):
 
 ```python
-pushdown="safe"
-validation="full"
+use_sqlrules=True
 on_reject="raise"
-diagnostics="summary"
-retain_raw_rows=False
-retain_adapted_rows=True
-streaming=False
 ```
 
-For high-volume ETL:
+Design-target defaults for later releases (not all shipped yet):
 
 ```python
-pushdown="safe"
-streaming=True
-on_reject="quarantine"
-retain_raw_rows=False
-retain_adapted_rows=False
-diagnostics="summary"
+use_sqlrules=True
+on_reject="raise"
+# streaming / quarantine / richer diagnostics — future milestones
+```
+
+For high-volume ETL (future streaming + quarantine):
+
+```python
+use_sqlrules=True
+# streaming=True          # 0.3.0+
+# on_reject="quarantine"  # later
 ```
 
 For data-quality audits:
 
 ```python
-pushdown="disabled"  # optionally audit all source rows
+use_sqlrules=False  # optionally audit all source rows
 strict=True
-streaming=True
-on_reject="quarantine"
-diagnostics="detailed"
+# streaming / quarantine — future milestones
 ```
 
 ---

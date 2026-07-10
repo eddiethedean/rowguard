@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import replace
 from typing import Any, Generic, TypeVar
 from uuid import uuid4
 
@@ -51,6 +52,22 @@ def _table_column_names(source: Any) -> dict[str, Any]:
         return {}
 
 
+def _source_fingerprint(source: Any | None) -> tuple[Any, ...]:
+    if source is None:
+        return (None,)
+    return (
+        id(source),
+        type(source).__name__,
+        getattr(source, "name", None),
+    )
+
+
+def _column_map_fingerprint(column_map: dict[str, Any] | None) -> tuple[Any, ...]:
+    if not column_map:
+        return ()
+    return tuple(sorted((key, id(value)) for key, value in column_map.items()))
+
+
 class QueryPlanner(Generic[T]):
     def __init__(
         self,
@@ -71,7 +88,11 @@ class QueryPlanner(Generic[T]):
             assert self._cache is not None
             cached = self._cache.get(cache_key)
             if cached is not None:
-                return cached
+                return replace(
+                    cached,
+                    parameters=dict(request.parameters),
+                    execution_id=uuid4().hex,
+                )
 
         execution_id = uuid4().hex
         diagnostics: list[Diagnostic] = []
@@ -126,21 +147,23 @@ class QueryPlanner(Generic[T]):
         return plan
 
     def _cache_key(self, request: QueryRequest[T]) -> str:
-        # Structural key only — exclude bind parameter values.
+        # Structural key only — exclude bind parameter values (rebound on hit).
         field_map = tuple(sorted((request.adapter.field_map or {}).items()))
-        column_map_keys = tuple(sorted((request.pushdown.column_map or {}).keys()))
+        compiled_rules = request.pushdown.compiled_rules
         return repr(
             (
                 request.model.__module__,
                 request.model.__qualname__,
-                type(request.source).__name__ if request.source is not None else None,
-                getattr(request.source, "name", None),
+                _source_fingerprint(request.source),
                 id(request.statement) if request.statement is not None else None,
                 request.where,
                 field_map,
-                column_map_keys,
+                _column_map_fingerprint(
+                    dict(request.pushdown.column_map) if request.pushdown.column_map else None
+                ),
                 request.pushdown.enabled,
-                request.pushdown.compiled_rules is not None,
+                id(compiled_rules) if compiled_rules is not None else None,
+                _source_fingerprint(request.pushdown.source),
                 request.validation.strict,
                 request.rejection.policy,
             )
@@ -170,7 +193,11 @@ class QueryPlanner(Generic[T]):
         *,
         execution_id: str,
     ) -> ResolvedSource | None:
-        source = request.pushdown.source if request.pushdown.source is not None else request.source
+        """Resolve the query selectable from request.source only.
+
+        pushdown.source is handled exclusively in ``_plan_pushdown``.
+        """
+        source = request.source
         if source is None:
             return None
         if isinstance(source, Table):
@@ -240,7 +267,7 @@ class QueryPlanner(Generic[T]):
         )
         if pushdown_source is None:
             return PushdownPlan(
-                enabled=True,
+                enabled=False,
                 diagnostics=(
                     Diagnostic(
                         code="sqlrules.pushdown_skipped",
@@ -253,9 +280,10 @@ class QueryPlanner(Generic[T]):
                 ),
             )
 
+        pushdown_columns = _table_column_names(pushdown_source)
         self._validate_column_map(
             request,
-            resolved=resolved,
+            columns=pushdown_columns,
             execution_id=execution_id,
         )
 
@@ -297,7 +325,7 @@ class QueryPlanner(Generic[T]):
         self,
         request: QueryRequest[T],
         *,
-        resolved: ResolvedSource | None,
+        columns: dict[str, Any],
         execution_id: str,
     ) -> None:
         column_map = request.pushdown.column_map
@@ -311,16 +339,17 @@ class QueryPlanner(Generic[T]):
                 stage="pushdown",
                 execution_id=execution_id,
             )
-        if resolved is not None and resolved.columns:
-            missing_cols = [
-                name
-                for name, col in column_map.items()
-                if getattr(col, "name", None) not in resolved.columns
-                and col not in resolved.columns.values()
-            ]
-            # Only warn via diagnostic when we cannot prove membership; hard-fail
-            # only for clearly missing string-named columns already checked above.
-            _ = missing_cols
+        if columns:
+            missing_cols = sorted(
+                name for name, col in column_map.items() if col not in columns.values()
+            )
+            if missing_cols:
+                raise PlanningError(
+                    "column_map columns are not members of the pushdown source: "
+                    + ", ".join(missing_cols),
+                    stage="pushdown",
+                    execution_id=execution_id,
+                )
 
     def _plan_adapter(
         self,

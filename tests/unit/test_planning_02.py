@@ -61,8 +61,10 @@ def test_resolve_select_as_pushdown_source(users: Table) -> None:
             pushdown=PushdownConfig(enabled=True, source=stmt),
         )
     )
-    assert plan.resolved_source is not None
-    assert plan.resolved_source.kind == "select"
+    # Query source is unset; pushdown.source is used only for SQLRules.
+    assert plan.resolved_source is None
+    assert plan.pushdown_plan.enabled is True
+    assert plan.use_sqlrules is True
 
 
 def test_valid_field_map_and_column_map(users: Table) -> None:
@@ -114,7 +116,7 @@ def test_table_column_names_helpers() -> None:
     assert _table_column_names(BareSource()) == {}
 
 
-def test_resolve_non_table_pushdown_source(users: Table) -> None:
+def test_resolve_non_table_query_source(users: Table) -> None:
     class FakeSource:
         name = "fake"
         c = None
@@ -123,14 +125,14 @@ def test_resolve_non_table_pushdown_source(users: Table) -> None:
     plan = QueryPlanner[UserRead]().compile(
         QueryRequest(
             model=UserRead,
+            source=FakeSource(),
             statement=select(users),
-            pushdown=PushdownConfig(enabled=False, source=FakeSource()),
+            pushdown=PushdownConfig(enabled=False),
         )
     )
     assert plan.resolved_source is not None
     assert plan.resolved_source.kind == "FakeSource"
     assert plan.resolved_source.columns == {}
-
 
 def test_planning_error_non_basemodel(users: Table) -> None:
     with pytest.raises(PlanningError, match="BaseModel"):

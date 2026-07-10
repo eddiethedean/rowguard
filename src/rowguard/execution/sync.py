@@ -62,6 +62,7 @@ class SyncExecutionEngine(Generic[T]):
         state.diagnostics.extend(plan.diagnostics)
         started = perf_counter_ns()
         result: Any | None = None
+        primary_error: BaseException | None = None
 
         try:
             result = self._execute_statement(plan, context)
@@ -69,15 +70,22 @@ class SyncExecutionEngine(Generic[T]):
                 processed = process_row(row=row, index=index, plan=plan)
                 if not self._consume_processed(state, processed):
                     break
-        except RowGuardError:
+        except RowGuardError as exc:
+            primary_error = exc
             raise
         except Exception as exc:
-            raise QueryExecutionError(f"Query execution failed: {exc}") from exc
+            primary_error = QueryExecutionError(f"Query execution failed: {exc}")
+            raise primary_error from exc
         finally:
             if result is not None:
                 close = getattr(result, "close", None)
                 if callable(close):
-                    close()
+                    try:
+                        close()
+                    except Exception:
+                        # Never mask a primary validation/execution failure.
+                        if primary_error is None:
+                            raise
             state.statistics.execution_time_ns = perf_counter_ns() - started
 
         return self._assemble(state)

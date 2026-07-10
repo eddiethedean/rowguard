@@ -55,6 +55,28 @@ def process_row(
             adaptation_time_ns=adaptation_time_ns,
             validated=False,
         )
+    except Exception as error:
+        adaptation_time_ns = perf_counter_ns() - started
+        wrapped = RowAdaptationError(
+            f"Adapter failed: {error}",
+            model=plan.model,
+            row_index=index,
+        )
+        wrapped.__cause__ = error
+        rejected = RejectedRow(
+            index=index,
+            model=plan.model,
+            mapping=None,
+            validation_error=None,
+            adaptation_error=wrapped,
+            raw_row=row,
+        )
+        return _handle_rejection(
+            plan,
+            rejected,
+            adaptation_time_ns=adaptation_time_ns,
+            validated=False,
+        )
     adaptation_time_ns = perf_counter_ns() - started
 
     started = perf_counter_ns()

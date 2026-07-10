@@ -65,7 +65,7 @@ Measures the manual pattern RowGuard formalizes.
 ```python
 rowguard.execute(
     ...,
-    pushdown="disabled",
+    use_sqlrules=False,
 )
 ```
 
@@ -76,7 +76,7 @@ Measures orchestration and rejection handling.
 ```python
 rowguard.execute(
     ...,
-    pushdown="safe",
+    use_sqlrules=True,
 )
 ```
 

@@ -7,6 +7,8 @@ V = TypeVar("V")
 
 class LRUCache(Generic[K, V]):
     def __init__(self, max_entries: int = 512) -> None:
+        if max_entries <= 0:
+            raise ValueError("max_entries must be positive")
         self._max_entries = max_entries
         self._items: OrderedDict[K, V] = OrderedDict()
 

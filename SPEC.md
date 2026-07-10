@@ -2,6 +2,23 @@
 
 # RowGuard Specification
 
+## Current as of 0.2.0
+
+Shipped surface:
+
+- Synchronous Core API: `select`, `execute`, `validate_rows`, `compile_plan`
+- SQLAlchemy Core `Table` / `Select` with `Session` or `Connection`
+- SQLRules pushdown (`use_sqlrules`, optional `compiled_rules`)
+- Rejection policies: `raise`, `collect`, `skip`
+- Staged immutable `ExecutionPlan` and planning diagnostics
+
+Deferred (not available yet):
+
+- `stream()` — 0.3.0
+- Async APIs — 0.4.0
+- ORM / SQLModel — 0.5.0
+- Callback / quarantine / log rejection policies — later
+
 ## Overview
 
 RowGuard is a validation-first query engine built on top of SQLAlchemy,
@@ -14,8 +31,8 @@ query is classified as either:
 2.  A rejected row with structured diagnostics.
 
 Unlike an ORM, RowGuard does not own your schema. It works with existing
-SQLAlchemy Core tables, ORM models, reflected schemas, and eventually
-SQLModel.
+SQLAlchemy Core tables today, and is designed to extend to ORM models,
+reflected schemas, and SQLModel in later releases.
 
 ------------------------------------------------------------------------
 
@@ -79,12 +96,18 @@ result = rowguard.select(
 )
 ```
 
-Additional APIs:
+Additional APIs (0.2.0):
 
 ``` python
-rowguard.stream(...)
 rowguard.execute(...)
 rowguard.validate_rows(...)
+rowguard.compile_plan(...)
+```
+
+Deferred:
+
+``` python
+rowguard.stream(...)  # 0.3.0 — raises NotImplementedError today
 ```
 
 ------------------------------------------------------------------------
@@ -103,7 +126,8 @@ Properties:
 -   rejected
 -   statistics
 -   statement
--   execution_time
+-   diagnostics
+-   execution_time (derived from `statistics.execution_time_ns`)
 
 ------------------------------------------------------------------------
 
@@ -123,7 +147,7 @@ Rejected rows are first-class objects.
 
 # Rejection Policies
 
-Supported in **0.1.0**:
+Supported in **0.1.0+**:
 
 -   raise
 -   collect
@@ -176,37 +200,39 @@ because Pydantic remains the source of truth.
 
 # Supported Inputs
 
-Initial targets:
+Current (0.2.0):
 
 -   SQLAlchemy Table
 -   SQLAlchemy Select
--   SQLAlchemy ORM model
 -   SQLAlchemy Session
+-   SQLAlchemy Connection
 
 Future:
 
--   AsyncSession
--   SQLModel
+-   SQLAlchemy ORM model (0.5.0)
+-   AsyncSession (0.4.0)
+-   SQLModel (0.5.0)
 -   reflected metadata
 
 ------------------------------------------------------------------------
 
 # Streaming
 
-Large result sets should be processed incrementally.
+Deferred to **0.3.0**. Large result sets should eventually be processed
+incrementally:
 
 ``` python
 for model in rowguard.stream(...):
     ...
 ```
 
-Streaming should validate each row independently.
+Until then, use buffered `select()` / `execute()`.
 
 ------------------------------------------------------------------------
 
 # Async
 
-Future API:
+Future API (0.4.0):
 
 ``` python
 await rowguard.aselect(...)
@@ -218,14 +244,19 @@ Async behavior should mirror synchronous behavior.
 
 # Statistics
 
-Every QueryResult should expose metrics:
+Every QueryResult exposes `QueryStatistics` with:
 
 -   rows_read
 -   rows_validated
 -   rows_accepted
 -   rows_rejected
--   validation_time
--   execution_time
+-   adaptation_time_ns
+-   validation_time_ns
+-   rejection_time_ns
+-   execution_time_ns
+
+`QueryResult.execution_time` is a convenience property over
+`execution_time_ns`.
 
 ------------------------------------------------------------------------
 
@@ -233,6 +264,7 @@ Every QueryResult should expose metrics:
 
 Diagnostics may include:
 
+-   planning codes (source resolved, pushdown applied/skipped, …)
 -   rejected fields
 -   validation summaries
 -   SQL statement
@@ -253,8 +285,9 @@ Examples:
 -   QueryExecutionError
 -   RowValidationError
 -   RowAdaptationError
--   RejectHandlerError
+-   PlanningError
 -   ConfigurationError
+-   RejectHandlerError
 
 ------------------------------------------------------------------------
 
@@ -273,7 +306,7 @@ responsibilities.
 
 # Performance Goals
 
--   Stream large datasets
+-   Stream large datasets (0.3.0+)
 -   Avoid duplicate validation
 -   Reuse SQLRules compilation
 -   Linear scaling with row count

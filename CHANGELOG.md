@@ -27,6 +27,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Session/connection moved off `ExecutionPlan` onto execution context
 - Internal plan shape is not frozen until 1.0; 0.1.0 call sites remain supported
+- `pushdown_source` no longer overrides the SELECT `FROM` when `table=` is set
+- Skipped pushdown (no source) sets `use_sqlrules=False` / `PushdownPlan.enabled=False`
+
+### Fixed
+
+- Plan cache key collisions on `parameters`, `column_map` values, `compiled_rules`,
+  and `pushdown.source`; cache hits rebind parameters and mint a fresh `execution_id`
+- `column_map` membership is hard-failed when pushdown source columns are known
+- `result.close()` failures no longer mask validation/execution errors
+- `validate_rows` rejects unknown `field_map` keys like the planner
+- Unexpected adapter exceptions are wrapped as `RowAdaptationError` for rejection policies
+- `StreamResult` raises `NotImplementedError` instead of silently empty-iterating
+- `compile_plan` rejects passing both `table=` and `source=`
+- `LRUCache` rejects non-positive `max_entries`
 
 ### Deferred
 

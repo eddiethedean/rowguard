@@ -89,15 +89,18 @@ RowGuard should never duplicate SQLRules' constraint translation logic.
 
 # Pushdown Modes
 
-RowGuard should expose an explicit pushdown mode.
+**Current (0.2.0) public API** uses a boolean flag:
 
 ```python
-pushdown="safe"
+use_sqlrules=True   # default — safe SQLRules pushdown
+use_sqlrules=False  # disable pushdown; validate every returned row
 ```
 
-Suggested modes:
+A richer `pushdown=` mode enum remains a design target for later releases.
+Until then, treat the sections below as the intended semantics of the
+boolean flag.
 
-## safe
+## safe (`use_sqlrules=True`)
 
 The default.
 
@@ -105,7 +108,7 @@ Apply only constraints SQLRules can translate with deterministic semantics.
 
 Unsupported constraints remain application-side validation rules.
 
-## disabled
+## disabled (`use_sqlrules=False`)
 
 Do not invoke SQLRules.
 
@@ -114,7 +117,7 @@ result = rowguard.select(
     session=session,
     table=users,
     model=UserRead,
-    pushdown="disabled",
+    use_sqlrules=False,
 )
 ```
 
@@ -884,8 +887,8 @@ compilation.
 
 The first RowGuard release should support:
 
-- `pushdown="safe"`.
-- `pushdown="disabled"`.
+- `use_sqlrules=True` (safe pushdown).
+- `use_sqlrules=False` (disabled pushdown).
 - SQLRules compilation through its public API.
 - SQLAlchemy table sources.
 - Explicit pushdown column maps.

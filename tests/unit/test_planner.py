@@ -90,6 +90,8 @@ def test_planner_skips_pushdown_without_source(users_table: Table) -> None:
         )
     )
     assert any(d.code == "sqlrules.pushdown_skipped" for d in plan.diagnostics)
+    assert plan.pushdown_plan.enabled is False
+    assert plan.use_sqlrules is False
 
 
 def test_planner_field_map_unknown_model_field() -> None:
@@ -171,7 +173,10 @@ def test_plan_cache_hit() -> None:
     )
     first = planner.compile(request)
     second = planner.compile(request)
-    assert first is second
+    # Cache hit rebinds a fresh execution_id; structural fields are shared.
+    assert first.statement is second.statement
+    assert first.model is second.model
+    assert first.execution_id != second.execution_id
 
 
 def test_sqlrules_bridge_compiles_constraints() -> None:
