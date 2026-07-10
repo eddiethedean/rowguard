@@ -1,0 +1,105 @@
+[build-system]
+requires = ["hatchling>=1.26"]
+build-backend = "hatchling.build"
+
+[project]
+name = "rowguard"
+version = "0.1.0"
+description = "Validation-first SQLAlchemy queries with Pydantic row validation."
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+authors = [{name = "RowGuard Contributors"}]
+keywords = [
+  "pydantic",
+  "sqlalchemy",
+  "validation",
+  "sqlrules",
+  "query",
+]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: Database",
+  "Topic :: Software Development :: Libraries :: Python Modules",
+  "Typing :: Typed",
+]
+dependencies = [
+  "pydantic>=2.7,<3",
+  "SQLAlchemy>=2.0,<3",
+  "sqlrules>=0.1.0",
+]
+
+[project.optional-dependencies]
+dev = [
+  "mypy>=1.10",
+  "pytest>=8",
+  "pytest-asyncio>=0.23",
+  "pytest-benchmark>=4",
+  "pytest-cov>=5",
+  "ruff>=0.5",
+  "pre-commit>=3.7",
+  "hypothesis>=6.100",
+]
+postgresql = ["psycopg[binary]>=3.1"]
+async = ["aiosqlite>=0.20"]
+
+[project.urls]
+Homepage = "https://github.com/eddiethedean/rowguard"
+Documentation = "https://github.com/eddiethedean/rowguard#readme"
+Repository = "https://github.com/eddiethedean/rowguard"
+Changelog = "https://github.com/eddiethedean/rowguard/blob/main/CHANGELOG.md"
+Issues = "https://github.com/eddiethedean/rowguard/issues"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/rowguard"]
+
+[tool.pytest.ini_options]
+addopts = "-ra --strict-markers --strict-config"
+testpaths = ["tests"]
+markers = [
+  "integration: database integration tests",
+  "benchmark: benchmark tests",
+  "postgresql: PostgreSQL tests",
+]
+
+[tool.coverage.run]
+branch = true
+source = ["rowguard"]
+omit = [
+  "src/rowguard/cache.py",
+  "src/rowguard/execution/streaming.py",
+  "src/rowguard/integrations/sqlalchemy_orm.py",
+  "src/rowguard/integrations/sqlmodel.py",
+  "src/rowguard/plugins/*",
+]
+
+[tool.coverage.report]
+show_missing = true
+fail_under = 95
+exclude_lines = [
+  "pragma: no cover",
+  "raise NotImplementedError",
+  "if TYPE_CHECKING:",
+]
+
+[tool.ruff]
+target-version = "py310"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]
+
+[tool.mypy]
+python_version = "3.10"
+strict = true
+packages = ["rowguard"]
+warn_unused_configs = true
