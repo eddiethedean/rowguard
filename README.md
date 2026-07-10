@@ -7,9 +7,9 @@ Pydantic model, and explicitly handles rows that fail validation.
 
 ## Status
 
-**0.3.1** — streaming lifecycle fixes, raise-policy stream stats, and planning
-correctness for `field_map` / plan cache / `compile_plan`. Async streaming remains
-deferred to 0.4.0; ORM remains deferred to 0.5.0.
+**0.4.0** — first-class async APIs (`aselect` / `aexecute` / `astream`) over
+`AsyncSession` / `AsyncConnection`, with streaming lifecycle parity to sync.
+ORM remains deferred to 0.5.0; async callback/quarantine handlers to 0.6.0.
 
 ## Install
 
@@ -84,7 +84,7 @@ with Session(engine) as session:
 With `use_sqlrules=True` (the default), supported constraints such as `age >= 18`
 are pushed into SQL, so invalid candidate rows may never be returned.
 
-## Public API (0.3.1)
+## Public API (0.4.0)
 
 | Function | Purpose |
 | --- | --- |
@@ -93,6 +93,9 @@ are pushed into SQL, so invalid candidate rows may never be returned.
 | `validate_rows(...)` | Validate mappings without SQL |
 | `compile_plan(...)` | Compile an `ExecutionPlan` without executing |
 | `stream(...)` | Stream validated models without buffering accepted rows |
+| `aselect(...)` | Async `select` for `AsyncSession` / `AsyncConnection` |
+| `aexecute(...)` | Async `execute` for `AsyncSession` / `AsyncConnection` |
+| `astream(...)` | Async stream (`AsyncStreamResult`) without buffering accepted rows |
 
 Rejection policies: `raise` (default), `collect`, `skip`.
 
@@ -100,6 +103,11 @@ Optional planning knobs: `compiled_rules=` (precompiled SQLRules), `strict=`
 (Pydantic), `field_map=` / `column_map=` (validated at plan time).
 
 Streaming knobs: `yield_per=`, `observers=` (`StreamObserver` / `BaseStreamObserver`).
+Observers remain sync callables in 0.4.
+
+Async note: only DB I/O is awaited. Pydantic validation runs on the event loop;
+heavy models can block. Prefer `async with rowguard.astream(...)` for cleanup.
+Install async extras with `pip install rowguard[async]`.
 
 ## Architecture
 
@@ -140,6 +148,7 @@ pip install -e ".[dev,async]"
 make all          # ruff + mypy + pytest --cov
 python examples/basic.py
 python examples/streaming.py
+python examples/async_basic.py
 ```
 
 ## License

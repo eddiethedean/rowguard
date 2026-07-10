@@ -41,6 +41,7 @@ jobs:
         run: |
           python examples/basic.py
           python examples/streaming.py
+          python examples/async_basic.py
 
   benchmark-smoke:
     runs-on: ubuntu-latest

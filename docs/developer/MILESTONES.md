@@ -162,11 +162,12 @@ Provide first-class asynchronous execution.
 - `AsyncSession`
 - `AsyncConnection`
 - Async stream lifecycle
-- Async callbacks
 - Cancellation handling
-- Async quarantine protocol
 - Sync/async parity tests
-- Supported driver matrix
+- Supported driver matrix (sqlite+aiosqlite for 0.4)
+
+Async callback / quarantine protocols are deferred to **0.6.0** (see ASYNC.md /
+ROADMAP). Ship raise / collect / skip only.
 
 ## Exit Criteria
 

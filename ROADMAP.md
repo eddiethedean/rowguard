@@ -93,15 +93,35 @@ with rowguard.stream(
 
 ------------------------------------------------------------------------
 
-# 0.4.0 --- Async Engine
+# 0.4.0 --- Async Engine (shipped)
 
 ## Goals
 
 -   `aselect()` / `aexecute()` / `astream()`
 -   `AsyncSession` / `AsyncConnection`
--   Async stream lifecycle
--   Async rejection handlers
--   Sync/async parity
+-   Async stream lifecycle (parity with sync `StreamResult`)
+-   Sync/async parity tests (sqlite+aiosqlite)
+-   Documented event-loop blocking (Pydantic on the loop)
+
+Async callback / quarantine reject handlers remain deferred to **0.6.0**.
+
+Deliverable:
+
+``` python
+result = await rowguard.aselect(
+    session=session,
+    table=users,
+    model=UserRead,
+)
+
+async with rowguard.astream(
+    session=session,
+    table=users,
+    model=UserRead,
+) as stream:
+    async for model in stream:
+        process(model)
+```
 
 ------------------------------------------------------------------------
 

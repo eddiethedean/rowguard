@@ -114,7 +114,8 @@ StreamResult[UserRead]
 
 `StreamResult` is an iterator and context manager. It exposes live
 `statistics`, retained `rejected` rows (under `collect`), `diagnostics`,
-`statement`, and `closed`. Async streaming (`astream`) is planned for 0.4.0.
+`statement`, and `closed`. See `astream` / `AsyncStreamResult` for the async
+equivalent.
 
 ------------------------------------------------------------------------
 
@@ -229,16 +230,45 @@ rejected.raw_row
 -   `validation_time_ns`
 -   `rejection_time_ns`
 
-## Async API (Planned — 0.4.0)
+## Async API (0.4.0)
 
-> Not available in 0.3.1.
+Requires an async SQLAlchemy engine/driver (e.g. `sqlite+aiosqlite`). Install
+with `pip install rowguard[async]`.
 
 ``` python
-await rowguard.aselect(...)
-await rowguard.aexecute(...)
-async for model in rowguard.astream(...):
-    ...
+result = await rowguard.aselect(
+    session=session,
+    table=users,
+    model=UserRead,
+    on_reject="collect",
+)
+
+result = await rowguard.aexecute(
+    session=session,
+    statement=stmt,
+    model=UserRead,
+)
+
+async with rowguard.astream(
+    session=session,
+    table=users,
+    model=UserRead,
+    on_reject="skip",
+    yield_per=100,
+) as stream:
+    async for model in stream:
+        ...
 ```
+
+`aselect` / `aexecute` return the same `QueryResult[T]` as sync. `astream`
+returns `AsyncStreamResult[T]` immediately; work starts on `async with` /
+`async for`. Prefer `async with` for reliable cursor cleanup (including
+cancellation).
+
+Only database I/O is awaited. Pydantic validation runs synchronously on the
+event loop and can block under heavy models. Stream observers remain sync
+callables. Async reject handlers (callback / quarantine) are not shipped in
+0.4.0.
 
 ## Design Guidelines
 

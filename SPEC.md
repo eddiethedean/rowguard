@@ -2,23 +2,25 @@
 
 # RowGuard Specification
 
-## Current as of 0.3.1
+## Current as of 0.4.0
 
 Shipped surface:
 
 - Synchronous Core API: `select`, `execute`, `validate_rows`, `compile_plan`, `stream`
-- `StreamResult[T]` with context-managed cleanup and live statistics
-- SQLAlchemy Core `Table` / `Select` with `Session` or `Connection`
+- Async Core API: `aselect`, `aexecute`, `astream`
+- `StreamResult[T]` / `AsyncStreamResult[T]` with context-managed cleanup
+- SQLAlchemy Core `Table` / `Select` with sync or async session/connection
 - SQLRules pushdown (`use_sqlrules`, optional `compiled_rules`)
 - Rejection policies: `raise`, `collect`, `skip`
 - Staged immutable `ExecutionPlan` and planning diagnostics
 - Streaming options: `yield_per`, `StreamObserver` / `BaseStreamObserver`
+  (observers remain sync callables)
 
 Deferred (not available yet):
 
-- Async APIs (`aselect` / `aexecute` / `astream`) — 0.4.0
 - ORM / SQLModel — 0.5.0
-- Callback / quarantine / log rejection policies — later
+- Async callback / quarantine reject handlers — 0.6.0
+- Callback / quarantine / log rejection policies — 0.6.0
 
 ## Overview
 
@@ -203,18 +205,18 @@ because Pydantic remains the source of truth.
 
 # Supported Inputs
 
-Current (0.3.1):
+Current (0.4.0):
 
 -   SQLAlchemy Table
 -   SQLAlchemy Select
--   SQLAlchemy Session
--   SQLAlchemy Connection
--   Buffered (`select` / `execute`) and streaming (`stream`) result modes
+-   SQLAlchemy Session / Connection
+-   SQLAlchemy AsyncSession / AsyncConnection
+-   Buffered (`select` / `execute` / `aselect` / `aexecute`) and streaming
+    (`stream` / `astream`) result modes
 
 Future:
 
 -   SQLAlchemy ORM model (0.5.0)
--   AsyncSession (0.4.0)
 -   SQLModel (0.5.0)
 -   reflected metadata
 

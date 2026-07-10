@@ -8,9 +8,10 @@ from sqlalchemy.sql import Select
 
 from rowguard.adapters.sqlalchemy_row import SQLAlchemyRowAdapter
 from rowguard.errors import ConfigurationError
-from rowguard.execution.context import SyncExecutionContext
+from rowguard.execution.async_ import AsyncExecutionEngine
+from rowguard.execution.context import AsyncExecutionContext, SyncExecutionContext
 from rowguard.execution.observer import StreamObserver
-from rowguard.execution.streaming import SyncStreamEngine
+from rowguard.execution.streaming import AsyncStreamEngine, SyncStreamEngine
 from rowguard.execution.sync import SyncExecutionEngine
 from rowguard.planning.compiler import QueryPlanner
 from rowguard.planning.config import (
@@ -32,6 +33,7 @@ from rowguard.planning.execution_plan import (
 from rowguard.planning.request import QueryRequest
 from rowguard.rejection.base import RejectionPolicy
 from rowguard.rejection.policies import CollectPolicy, RaisePolicy, SkipPolicy
+from rowguard.results.async_stream_result import AsyncStreamResult
 from rowguard.results.query_result import QueryResult
 from rowguard.results.stream_result import StreamResult
 from rowguard.validation.pydantic import PydanticValidator
@@ -238,6 +240,128 @@ def stream(
     )
     context = SyncExecutionContext(session=session, connection=connection)
     return SyncStreamEngine[T]().open(
+        plan,
+        context,
+        streaming=StreamingConfig(stream_results=True, yield_per=yield_per),
+        observers=observers or (),
+    )
+
+
+async def aselect(
+    *,
+    session: Any | None = None,
+    connection: Any | None = None,
+    table: Any,
+    model: type[T],
+    where: Iterable[Any] = (),
+    field_map: Mapping[str, str] | None = None,
+    column_map: Mapping[str, Any] | None = None,
+    parameters: Mapping[str, object] | None = None,
+    on_reject: str = "raise",
+    use_sqlrules: bool = True,
+    compiled_rules: Mapping[str, Any] | None = None,
+    strict: bool | None = None,
+) -> QueryResult[T]:
+    """Async variant of ``select`` using AsyncSession or AsyncConnection."""
+    plan = compile_plan(
+        model=model,
+        table=table,
+        where=where,
+        field_map=field_map,
+        column_map=column_map,
+        parameters=parameters,
+        on_reject=on_reject,
+        use_sqlrules=use_sqlrules,
+        compiled_rules=compiled_rules,
+        strict=strict,
+    )
+    context = AsyncExecutionContext(session=session, connection=connection)
+    return await AsyncExecutionEngine[T]().execute(plan, context)
+
+
+async def aexecute(
+    *,
+    session: Any | None = None,
+    connection: Any | None = None,
+    statement: Select[Any],
+    model: type[T],
+    source: Any | None = None,
+    where: Iterable[Any] = (),
+    field_map: Mapping[str, str] | None = None,
+    column_map: Mapping[str, Any] | None = None,
+    parameters: Mapping[str, object] | None = None,
+    on_reject: str = "raise",
+    use_sqlrules: bool = True,
+    compiled_rules: Mapping[str, Any] | None = None,
+    strict: bool | None = None,
+) -> QueryResult[T]:
+    """Async variant of ``execute`` using AsyncSession or AsyncConnection."""
+    plan = compile_plan(
+        model=model,
+        statement=statement,
+        source=source,
+        where=where,
+        field_map=field_map,
+        column_map=column_map,
+        parameters=parameters,
+        on_reject=on_reject,
+        use_sqlrules=use_sqlrules,
+        compiled_rules=compiled_rules,
+        pushdown_source=source,
+        strict=strict,
+    )
+    context = AsyncExecutionContext(session=session, connection=connection)
+    return await AsyncExecutionEngine[T]().execute(plan, context)
+
+
+def astream(
+    *,
+    session: Any | None = None,
+    connection: Any | None = None,
+    table: Any | None = None,
+    statement: Select[Any] | None = None,
+    model: type[T],
+    source: Any | None = None,
+    where: Iterable[Any] = (),
+    field_map: Mapping[str, str] | None = None,
+    column_map: Mapping[str, Any] | None = None,
+    parameters: Mapping[str, object] | None = None,
+    on_reject: str = "raise",
+    use_sqlrules: bool = True,
+    compiled_rules: Mapping[str, Any] | None = None,
+    strict: bool | None = None,
+    yield_per: int | None = None,
+    observers: Sequence[StreamObserver] | None = None,
+) -> AsyncStreamResult[T]:
+    """Async stream of validated models without buffering accepted rows.
+
+    Returns immediately; iteration starts on ``async with`` / ``async for``.
+    Pydantic validation remains synchronous on the event loop.
+    """
+    if (table is None) == (statement is None):
+        raise ConfigurationError("Pass exactly one of table= or statement=")
+    if table is not None and source is not None:
+        raise ConfigurationError("Pass only one of table= or source=")
+    if yield_per is not None and yield_per <= 0:
+        raise ConfigurationError("yield_per must be a positive integer")
+
+    plan = compile_plan(
+        model=model,
+        table=table,
+        statement=statement,
+        source=source,
+        where=where,
+        field_map=field_map,
+        column_map=column_map,
+        parameters=parameters,
+        on_reject=on_reject,
+        use_sqlrules=use_sqlrules,
+        compiled_rules=compiled_rules,
+        pushdown_source=source if statement is not None else None,
+        strict=strict,
+    )
+    context = AsyncExecutionContext(session=session, connection=connection)
+    return AsyncStreamEngine[T]().open(
         plan,
         context,
         streaming=StreamingConfig(stream_results=True, yield_per=yield_per),

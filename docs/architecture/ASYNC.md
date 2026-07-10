@@ -119,11 +119,14 @@ Resources should be released automatically when the context exits.
 
 # Rejection Handling
 
-Policies remain identical:
+Policies remain identical for shipped policies:
 
 - raise
 - collect
 - skip
+
+Deferred to **0.6.0** (same as sync):
+
 - log
 - callback
 - quarantine
@@ -134,6 +137,17 @@ Future versions may support asynchronous callbacks:
 async def handler(rejected):
     ...
 ```
+
+In 0.4.0, rejection decisions stay synchronous via `process_row`. Do not fake
+async reject handlers with thread pools.
+
+---
+
+# Event-loop blocking
+
+Pydantic validation runs on the event loop (CPU-bound, not awaited). Heavy
+models or large per-row validators can stall other coroutines. Prefer lean
+read models for hot async paths; offload only if application code chooses to.
 
 ---
 
@@ -186,19 +200,22 @@ Async tests should verify:
 
 # MVP Scope
 
-Initial async support:
+**Shipped in 0.4.0:**
 
-- AsyncSession
+- AsyncSession / AsyncConnection
 - aselect()
 - aexecute()
-- astream()
-- identical validation semantics
+- astream() / AsyncStreamResult
+- identical validation semantics (raise / collect / skip)
+- sqlite+aiosqlite driver matrix
+- cancellation closes stream resources
 
 Deferred:
 
-- async reject handlers
+- async reject handlers (callback / quarantine) — 0.6.0
 - adaptive batching
 - resumable async streams
+- asyncpg as a required CI driver
 
 ---
 

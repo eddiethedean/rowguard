@@ -3,29 +3,30 @@
 Build and maintain RowGuard from the architecture and specification documents in
 this repository.
 
-**Current shipped release: 0.3.1.** Do not re-implement 0.1.0–0.3.1 unless fixing
-regressions. Next planned milestone is **0.4.0 (async)** per `ROADMAP.md`
+**Current shipped release: 0.4.0.** Do not re-implement 0.1.0–0.4.0 unless fixing
+regressions. Next planned milestone is **0.5.0 (ORM / SQLModel)** per `ROADMAP.md`
 and `docs/developer/MILESTONES.md` (MILESTONES is authoritative).
 
-## Shipped through 0.3.1
+## Shipped through 0.4.0
 
 - Python 3.10+
 - Pydantic v2
 - SQLAlchemy 2.x
 - SQLRules integration (`sqlrules>=0.4.0`)
 - SQLAlchemy Core `Table` and `Select`
-- Sync `Session` and `Connection`
+- Sync `Session` / `Connection` and async `AsyncSession` / `AsyncConnection`
 - `select()`, `execute()`, `validate_rows()`, `compile_plan()`, `stream()`
-- `StreamResult[T]` with context-managed cleanup and live statistics
-- `StreamObserver` / `BaseStreamObserver` progress hooks
+- `aselect()`, `aexecute()`, `astream()`
+- `StreamResult[T]` / `AsyncStreamResult[T]` with context-managed cleanup
+- `StreamObserver` / `BaseStreamObserver` progress hooks (sync callables)
 - Staged immutable `ExecutionPlan` and planning configs
 - `QueryResult[T]`, `RejectedRow`, `QueryStatistics`
 - Rejection policies: `raise`, `collect`, `skip`
 - Mapping-based validation and plan-time field/column map checks
-- SQLite unit + integration + streaming tests
+- SQLite unit + integration + streaming + async (aiosqlite) tests
 - Strict typing
 - No ORM relationship traversal
-- No async until 0.4.0
+- No async callback/quarantine handlers until 0.6.0
 
 ## Implementation Rules
 
@@ -45,5 +46,5 @@ and `docs/developer/MILESTONES.md` (MILESTONES is authoritative).
 
 ## Next Deliverable
 
-Implement the **0.4.0 async** public API and tests required by
-`docs/developer/MILESTONES.md`, without breaking 0.3.x call sites.
+Implement the **0.5.0 ORM / SQLModel** public API and tests required by
+`docs/developer/MILESTONES.md`, without breaking 0.4.x call sites.

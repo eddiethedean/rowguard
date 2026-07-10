@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] — 2026-07-10
+
+### Added
+
+- First-class async APIs: `aselect()`, `aexecute()`, and `astream()`
+- `AsyncSession` / `AsyncConnection` execution via `AsyncExecutionContext`
+- `AsyncStreamResult[T]` with lifecycle parity to sync `StreamResult`
+  (`async with`, `async for`, idempotent `close()`, raise-policy stats)
+- `AsyncExecutionEngine` / `AsyncStreamEngine` reusing planner + `process_row`
+- Async tests under `tests/async/` (aiosqlite parity, lifecycle, cancellation)
+- `examples/async_basic.py` and pytest-asyncio `asyncio_mode = auto`
+- Optional install: `pip install rowguard[async]` (`aiosqlite`, `greenlet`)
+
+### Notes
+
+- Await only DB I/O; Pydantic validation remains synchronous on the event loop
+  (document blocking risk for heavy models)
+- Async callback / quarantine reject handlers remain deferred to 0.6.0
+- Driver matrix for this release: **sqlite+aiosqlite** (asyncpg not required)
+
 ## [0.3.1] — 2026-07-10
 
 ### Fixed
@@ -134,6 +154,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - ORM / SQLModel integrations
 - Callback and quarantine rejection policies
 
+[0.4.0]: https://github.com/eddiethedean/rowguard/compare/v0.3.1...v0.4.0
 [0.3.1]: https://github.com/eddiethedean/rowguard/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/eddiethedean/rowguard/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/eddiethedean/rowguard/compare/v0.1.0...v0.2.0
