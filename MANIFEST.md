@@ -4,6 +4,7 @@ Included files:
 
 - `.github/workflows/benchmarks.yml`
 - `.github/workflows/ci.yml`
+- `.github/workflows/release.yml`
 - `.gitignore`
 - `.pre-commit-config.yaml`
 - `API.md`

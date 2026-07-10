@@ -31,6 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `rows_validated` counts only rows that reached Pydantic validation
 - Explicit `statement` + `source` pushdown emits
   `sqlrules.pushdown_source_explicit` diagnostic
+- Require `sqlrules>=0.2.0` (needs `Compiler.diagnostics` for pushdown reporting)
 
 ### Deferred
 
