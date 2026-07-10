@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 48" role="img" aria-label="RowGuard">
+  <svg x="0" y="2" width="44" height="44" viewBox="0 0 512 512" aria-hidden="true">
+    <rect x="16" y="16" width="480" height="480" rx="96" fill="#111827"/>
+    <rect x="112" y="148" width="288" height="48" rx="12" fill="#2DD4BF"/>
+    <rect x="112" y="232" width="288" height="48" rx="12" fill="#5EEAD4"/>
+    <rect x="112" y="316" width="188" height="48" rx="12" fill="#99F6E4"/>
+    <path d="M340 300 L392 352 L468 248" fill="none" stroke="#2DD4BF" stroke-width="36" stroke-linecap="round" stroke-linejoin="round"/>
+  </svg>
+  <text
+    x="52"
+    y="31"
+    font-family="ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif"
+    font-size="20"
+    font-weight="600"
+    letter-spacing="-0.04em"
+  ><tspan fill="#F1F5F9">Row</tspan><tspan fill="#2DD4BF">Guard</tspan></text>
+</svg>

@@ -1,4 +1,6 @@
 # Sphinx documentation dependencies for Read the Docs and local builds.
 sphinx>=7.2,<9
 myst-parser>=3.0,<5
-sphinx-rtd-theme>=2.0,<4
+furo>=2024.8.6,<2026
+sphinx-copybutton>=0.5,<1
+sphinx-design>=0.5,<1

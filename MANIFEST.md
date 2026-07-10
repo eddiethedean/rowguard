@@ -19,8 +19,8 @@ Included files for RowGuard **0.4.0**:
 - `SPEC.md`
 - `benchmarks/conftest.py`
 - `benchmarks/test_validation_benchmark.py`
-- `docs/` (Sphinx + MyST: `conf.py`, `index.md`, `requirements.txt`, architecture,
-  developer, integrations, rejection, validation, reference)
+- `docs/` (Sphinx + Furo + MyST: `conf.py`, `index.md`, `guides/`, `reference/`,
+  architecture, developer, integrations, rejection, validation)
 - `examples/basic.py`
 - `examples/streaming.py`
 - `examples/async_basic.py`

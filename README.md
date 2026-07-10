@@ -137,12 +137,13 @@ Pydantic Validation
 
 ## Documentation
 
-- [Online docs](https://rowguard.readthedocs.io) — Read the Docs
+- [Online docs](https://rowguard.readthedocs.io) — Furo / Read the Docs
+- [Start here](https://rowguard.readthedocs.io/en/latest/guides/start-here.html) · [Quickstart](https://rowguard.readthedocs.io/en/latest/guides/quickstart.html)
 - [SPEC.md](SPEC.md) — product specification
 - [API.md](API.md) — public API
 - [ARCHITECTURE.md](ARCHITECTURE.md) — layered design
 - [ROADMAP.md](ROADMAP.md) — release plan
-- [docs/](docs/) — detailed design notes
+- [docs/](docs/) — Sphinx site + design notes
 
 Build docs locally:
 

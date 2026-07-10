@@ -1,28 +1,47 @@
-# Documentation build
+# Documentation
 
-This tree is the Sphinx source for [Read the Docs](https://rowguard.readthedocs.io).
+Sphinx site published at **[rowguard.readthedocs.io](https://rowguard.readthedocs.io/en/latest/)**.
 
-## Local build
+| Audience | Entry |
+| --- | --- |
+| New users | [Start here](https://rowguard.readthedocs.io/en/latest/guides/start-here.html) · [Quickstart](https://rowguard.readthedocs.io/en/latest/guides/quickstart.html) |
+| Async / streaming | [Async](https://rowguard.readthedocs.io/en/latest/guides/async.html) · [Streaming](https://rowguard.readthedocs.io/en/latest/guides/streaming.html) |
+| Rejection policies | [Guide](https://rowguard.readthedocs.io/en/latest/guides/rejection-policies.html) |
+| API | [API guide](https://rowguard.readthedocs.io/en/latest/api.html) · [Autodoc](https://rowguard.readthedocs.io/en/latest/reference/api.html) |
+| Architecture | [Overview](https://rowguard.readthedocs.io/en/latest/architecture_overview.html) |
+
+## Build locally
 
 ```bash
 pip install -e ".[docs]"
 make docs
-open docs/_build/html/index.html
 ```
 
-## Read the Docs project setup
+Output: `docs/_build/html/index.html`. Uses Sphinx `-W` (warnings are errors),
+matching CI and Read the Docs.
 
-1. Sign in at https://readthedocs.org/ with GitHub.
-2. **Import a Project** → select `eddiethedean/rowguard`.
-3. Confirm the project slug is `rowguard` (URL: `https://rowguard.readthedocs.io`).
-4. Ensure **Build pull requests** is enabled if you want PR previews.
-5. Trigger a build from the **Versions** / **Builds** tab (or push to `main`).
+## Source layout
 
-Configuration is entirely in the repo:
+- `guides/` — tutorials and how-tos
+- `reference/` — autodoc API pages
+- `architecture/`, `validation/`, `rejection/`, `integrations/` — design notes
+- `project/` — changelog / roadmap wrappers
+- Root wrappers (`api.md`, `spec.md`, …) `{include}` canonical markdown from the repo root
 
-- [`.readthedocs.yaml`](../.readthedocs.yaml) — OS, Python, Sphinx path, install
-- [`conf.py`](conf.py) — Sphinx + MyST settings
-- [`requirements.txt`](requirements.txt) — Sphinx build dependencies
+Publishing: [READTHEDOCS.md](READTHEDOCS.md) · [`.readthedocs.yaml`](../.readthedocs.yaml)
 
-Root guides (`README.md`, `API.md`, …) are included via thin wrappers in this
-directory so the markdown sources stay at the repository root.
+## Single-source policy
+
+Edit canonical files at the **repository root** (`API.md`, `SPEC.md`, …) or under
+`docs/architecture/` etc. Do not duplicate content into thin wrappers.
+
+| Edit this | Wrapper (do not duplicate) |
+| --- | --- |
+| `../API.md` | `api.md` |
+| `../SPEC.md` | `spec.md` |
+| `../ARCHITECTURE.md` | `architecture_overview.md` |
+| `../README.md` | `readme.md` |
+| `../CHANGELOG.md` | `project/changelog.md` |
+| `../ROADMAP.md` | `project/roadmap.md` |
+
+Standalone pages (edit directly): `guides/*`, `reference/api.md`, `index.md`.
