@@ -13,6 +13,6 @@ repos:
         additional_dependencies:
           - pydantic>=2.7
           - SQLAlchemy>=2.0
-          - sqlrules>=0.2.0
+          - sqlrules>=0.4.0
         args: [--config-file=pyproject.toml]
         pass_filenames: false

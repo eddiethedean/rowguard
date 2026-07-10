@@ -41,7 +41,7 @@ class SQLRulesBridge:
 
         diagnostics: list[Diagnostic] = [
             Diagnostic(
-                code=getattr(item, "code", None) or "sqlrules.diagnostic",
+                code=item.code or "sqlrules.diagnostic",
                 severity=item.severity,
                 execution_id=execution_id,
                 metadata={

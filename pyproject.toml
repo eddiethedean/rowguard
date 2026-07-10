@@ -35,7 +35,7 @@ classifiers = [
 dependencies = [
   "pydantic>=2.7,<3",
   "SQLAlchemy>=2.0,<3",
-  "sqlrules>=0.2.0",
+  "sqlrules>=0.4.0",
 ]
 
 [project.optional-dependencies]
