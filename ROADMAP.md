@@ -68,7 +68,7 @@ ORM and SQLModel remain deferred to **0.5.0**.
 
 ------------------------------------------------------------------------
 
-# 0.3.0 --- Streaming Engine
+# 0.3.0 --- Streaming Engine (shipped)
 
 ## Goals
 
@@ -78,6 +78,18 @@ ORM and SQLModel remain deferred to **0.5.0**.
 -   Memory-bounded processing
 -   Rejection policies during streaming
 -   Progress / observer hooks
+
+Deliverable:
+
+``` python
+with rowguard.stream(
+    session=session,
+    table=users,
+    model=UserRead,
+) as stream:
+    for model in stream:
+        process(model)
+```
 
 ------------------------------------------------------------------------
 

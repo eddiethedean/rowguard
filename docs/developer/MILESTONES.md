@@ -119,7 +119,7 @@ ORM / SQLModel remain out of scope here (see **0.5.0**).
 
 ---
 
-# 0.3.0 — Streaming Engine
+# 0.3.0 — Streaming Engine (shipped)
 
 ## Goal
 

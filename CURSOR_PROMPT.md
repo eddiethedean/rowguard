@@ -3,11 +3,11 @@
 Build and maintain RowGuard from the architecture and specification documents in
 this repository.
 
-**Current shipped release: 0.2.0.** Do not re-implement 0.1.0/0.2.0 unless fixing
-regressions. Next planned milestone is **0.3.0 (streaming)** per `ROADMAP.md`
+**Current shipped release: 0.3.0.** Do not re-implement 0.1.0–0.3.0 unless fixing
+regressions. Next planned milestone is **0.4.0 (async)** per `ROADMAP.md`
 and `docs/developer/MILESTONES.md` (MILESTONES is authoritative).
 
-## Shipped through 0.2.0
+## Shipped through 0.3.0
 
 - Python 3.10+
 - Pydantic v2
@@ -15,16 +15,17 @@ and `docs/developer/MILESTONES.md` (MILESTONES is authoritative).
 - SQLRules integration (`sqlrules>=0.4.0`)
 - SQLAlchemy Core `Table` and `Select`
 - Sync `Session` and `Connection`
-- `select()`, `execute()`, `validate_rows()`, `compile_plan()`
+- `select()`, `execute()`, `validate_rows()`, `compile_plan()`, `stream()`
+- `StreamResult[T]` with context-managed cleanup and live statistics
+- `StreamObserver` / `BaseStreamObserver` progress hooks
 - Staged immutable `ExecutionPlan` and planning configs
 - `QueryResult[T]`, `RejectedRow`, `QueryStatistics`
-- Rejection policies: raise, collect, skip
+- Rejection policies: `raise`, `collect`, `skip`
 - Mapping-based validation and plan-time field/column map checks
-- SQLite unit + integration tests
+- SQLite unit + integration + streaming tests
 - Strict typing
 - No ORM relationship traversal
 - No async until 0.4.0
-- `stream()` raises `NotImplementedError` until 0.3.0
 
 ## Implementation Rules
 
@@ -44,6 +45,5 @@ and `docs/developer/MILESTONES.md` (MILESTONES is authoritative).
 
 ## Next Deliverable
 
-Implement the **0.3.0 streaming** public API and tests required by
-`docs/developer/MILESTONES.md` and `docs/architecture/STREAMING.md`, without
-breaking 0.2.0 call sites.
+Implement the **0.4.0 async** public API and tests required by
+`docs/developer/MILESTONES.md`, without breaking 0.3.0 call sites.

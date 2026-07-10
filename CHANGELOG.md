@@ -5,6 +5,35 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] — 2026-07-10
+
+### Added
+
+- Public `stream()` returning context-managed `StreamResult[T]`
+- Incremental validation that yields accepted models without retaining them
+- SQLAlchemy streaming options: `stream_results=True` and optional `yield_per=`
+- Rejection policy parity during streaming (`raise`, `collect`, `skip`)
+- Live `statistics`, retained `rejected`, `diagnostics`, and `statement` on
+  `StreamResult`
+- First-party `StreamObserver` / `BaseStreamObserver` progress hooks
+- `StreamingConfig` for execution-time streaming options
+- Shared `MutableStatistics` / `ExecutionState` used by buffered and streaming
+  engines
+- Streaming tests (parity, cleanup, observers, memory regression) and
+  `examples/streaming.py`
+
+### Changed
+
+- `stream()` accepts either `table=` or `statement=` with the same planning knobs
+  as `select` / `execute` (`session`/`connection`, pushdown, maps, `strict`, …)
+- Package version and docs updated for the 0.3.0 surface
+
+### Deferred
+
+- Async APIs including `astream()` (0.4.0)
+- ORM / SQLModel (0.5.0)
+- Callback and quarantine rejection policies (0.6.0)
+
 ## [0.2.0] — 2026-07-10
 
 ### Added
@@ -45,7 +74,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Deferred
 
 - ORM / SQLModel (planned for 0.5.0)
-- `stream()` (0.3.0), async APIs (0.4.0)
+- Async APIs (0.4.0)
 - Callback and quarantine rejection policies
 
 ## [0.1.0] — 2026-07-10

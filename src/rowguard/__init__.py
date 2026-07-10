@@ -8,14 +8,17 @@ from rowguard.errors import (
     RowGuardError,
     RowValidationError,
 )
+from rowguard.execution.observer import BaseStreamObserver, StreamObserver
 from rowguard.planning.execution_plan import ExecutionPlan
 from rowguard.results.query_result import QueryResult
 from rowguard.results.rejected_row import RejectedRow
+from rowguard.results.stream_result import StreamResult
 from rowguard.statistics import QueryStatistics
 
-__version__ = "0.2.0"
+__version__ = "0.3.0"
 
 __all__ = [
+    "BaseStreamObserver",
     "ConfigurationError",
     "ExecutionPlan",
     "PlanningError",
@@ -27,6 +30,8 @@ __all__ = [
     "RowAdaptationError",
     "RowGuardError",
     "RowValidationError",
+    "StreamObserver",
+    "StreamResult",
     "__version__",
     "compile_plan",
     "execute",

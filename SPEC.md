@@ -2,20 +2,21 @@
 
 # RowGuard Specification
 
-## Current as of 0.2.0
+## Current as of 0.3.0
 
 Shipped surface:
 
-- Synchronous Core API: `select`, `execute`, `validate_rows`, `compile_plan`
+- Synchronous Core API: `select`, `execute`, `validate_rows`, `compile_plan`, `stream`
+- `StreamResult[T]` with context-managed cleanup and live statistics
 - SQLAlchemy Core `Table` / `Select` with `Session` or `Connection`
 - SQLRules pushdown (`use_sqlrules`, optional `compiled_rules`)
 - Rejection policies: `raise`, `collect`, `skip`
 - Staged immutable `ExecutionPlan` and planning diagnostics
+- Streaming options: `yield_per`, `StreamObserver` / `BaseStreamObserver`
 
 Deferred (not available yet):
 
-- `stream()` — 0.3.0
-- Async APIs — 0.4.0
+- Async APIs (`aselect` / `aexecute` / `astream`) — 0.4.0
 - ORM / SQLModel — 0.5.0
 - Callback / quarantine / log rejection policies — later
 
@@ -96,7 +97,7 @@ result = rowguard.select(
 )
 ```
 
-Additional APIs (0.2.0):
+Additional APIs (0.2.0+):
 
 ``` python
 rowguard.execute(...)
@@ -104,10 +105,12 @@ rowguard.validate_rows(...)
 rowguard.compile_plan(...)
 ```
 
-Deferred:
+Streaming (0.3.0):
 
 ``` python
-rowguard.stream(...)  # 0.3.0 — raises NotImplementedError today
+with rowguard.stream(...) as stream:
+    for model in stream:
+        ...
 ```
 
 ------------------------------------------------------------------------
@@ -218,15 +221,23 @@ Future:
 
 # Streaming
 
-Deferred to **0.3.0**. Large result sets should eventually be processed
-incrementally:
+Shipped in **0.3.0**. Large result sets are processed incrementally without
+retaining accepted models:
 
 ``` python
-for model in rowguard.stream(...):
-    ...
+with rowguard.stream(
+    session=session,
+    table=users,
+    model=UserRead,
+    on_reject="skip",
+) as stream:
+    for model in stream:
+        ...
+    statistics = stream.statistics
 ```
 
-Until then, use buffered `select()` / `execute()`.
+`StreamResult` is separate from `QueryResult`. Async streaming is deferred to
+0.4.0.
 
 ------------------------------------------------------------------------
 

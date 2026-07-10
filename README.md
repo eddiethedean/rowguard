@@ -7,8 +7,9 @@ Pydantic model, and explicitly handles rows that fail validation.
 
 ## Status
 
-**0.2.0** — staged execution planning, plan inspection, precompiled SQLRules, and
-clearer configuration errors. ORM remains deferred to 0.5.0.
+**0.3.0** — synchronous streaming via `stream()` / `StreamResult`, context-managed
+cleanup, SQLAlchemy `stream_results` / `yield_per`, and progress observers.
+Async streaming remains deferred to 0.4.0; ORM remains deferred to 0.5.0.
 
 ## Install
 
@@ -68,12 +69,22 @@ with Session(engine) as session:
     )
     print(result.models)
     print(result.rejected)
+
+    with rowguard.stream(
+        session=session,
+        table=users,
+        model=UserRead,
+        on_reject="skip",
+        use_sqlrules=False,
+    ) as stream:
+        for model in stream:
+            print(model)
 ```
 
 With `use_sqlrules=True` (the default), supported constraints such as `age >= 18`
 are pushed into SQL, so invalid candidate rows may never be returned.
 
-## Public API (0.2.0)
+## Public API (0.3.0)
 
 | Function | Purpose |
 | --- | --- |
@@ -81,12 +92,14 @@ are pushed into SQL, so invalid candidate rows may never be returned.
 | `execute(...)` | Validate rows from an existing `Select` |
 | `validate_rows(...)` | Validate mappings without SQL |
 | `compile_plan(...)` | Compile an `ExecutionPlan` without executing |
-| `stream(...)` | Deferred to 0.3.0 |
+| `stream(...)` | Stream validated models without buffering accepted rows |
 
 Rejection policies: `raise` (default), `collect`, `skip`.
 
 Optional planning knobs: `compiled_rules=` (precompiled SQLRules), `strict=`
 (Pydantic), `field_map=` / `column_map=` (validated at plan time).
+
+Streaming knobs: `yield_per=`, `observers=` (`StreamObserver` / `BaseStreamObserver`).
 
 ## Architecture
 
@@ -126,6 +139,7 @@ Pydantic Validation
 pip install -e ".[dev,async]"
 make all          # ruff + mypy + pytest --cov
 python examples/basic.py
+python examples/streaming.py
 ```
 
 ## License

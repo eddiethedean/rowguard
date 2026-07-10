@@ -144,13 +144,18 @@ def test_validate_rows_invalid_policy() -> None:
 
 
 @pytest.mark.integration
-def test_stream_not_implemented(session, users_table) -> None:
-    with pytest.raises(NotImplementedError, match=r"0\.3\.0"):
-        rowguard.stream(
-            session=session,
-            statement=select(users_table),
-            model=UserRead,
-        )
+def test_stream_collect(session, users_table) -> None:
+    with rowguard.stream(
+        session=session,
+        statement=select(users_table),
+        model=UserRead,
+        on_reject="collect",
+        use_sqlrules=False,
+    ) as stream:
+        models = list(stream)
+    assert len(models) == 2
+    assert stream.rejected_count == 1
+    assert stream.statistics.rows_read == 3
 
 
 @pytest.mark.integration

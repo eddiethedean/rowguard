@@ -80,19 +80,41 @@ Internal plan field layout may change before 1.0.
 
 ### stream()
 
-Validate rows incrementally while streaming large result sets.
-
-> **Status (0.2.0):** Not implemented. Raises `NotImplementedError`.
-> Planned for 0.3.0.
+Validate rows incrementally while streaming large result sets. Accepted models
+are yielded and never retained. Use a context manager so database resources are
+released on early exit.
 
 ``` python
-for model in rowguard.stream(
+with rowguard.stream(
     session=session,
-    statement=stmt,
+    table=users,          # or statement=stmt
     model=UserRead,
-):
-    ...
+    on_reject="collect",
+    use_sqlrules=True,
+    yield_per=500,
+    observers=None,
+) as stream:
+    for model in stream:
+        process(model)
+    stats = stream.statistics
+    rejected = stream.rejected
 ```
+
+Parameters match `select` / `execute` planning knobs, plus:
+
+-   Pass exactly one of `table` or `statement`
+-   `yield_per`: optional SQLAlchemy fetch size
+-   `observers`: optional sequence of `StreamObserver` hooks
+
+Returns:
+
+``` python
+StreamResult[UserRead]
+```
+
+`StreamResult` is an iterator and context manager. It exposes live
+`statistics`, retained `rejected` rows (under `collect`), `diagnostics`,
+`statement`, and `closed`. Async streaming (`astream`) is planned for 0.4.0.
 
 ------------------------------------------------------------------------
 
@@ -159,6 +181,28 @@ while `rejected` is empty.
 `execution_time` is end-to-end wall time in seconds (statement fetch plus
 validation for SQL paths; full processing for `validate_rows`).
 
+## StreamResult
+
+``` python
+stream.statistics
+stream.rejected
+stream.diagnostics
+stream.statement
+stream.closed
+stream.execution_time
+stream.rejected_count
+stream.has_rejections
+stream.is_clean
+```
+
+Accepted models are yielded by iteration and are **not** retained. Prefer:
+
+``` python
+with rowguard.stream(...) as stream:
+    for model in stream:
+        ...
+```
+
 ## RejectedRow
 
 Each rejected row exposes:
@@ -187,7 +231,7 @@ rejected.raw_row
 
 ## Async API (Planned — 0.4.0)
 
-> Not available in 0.2.0.
+> Not available in 0.3.0.
 
 ``` python
 await rowguard.aselect(...)

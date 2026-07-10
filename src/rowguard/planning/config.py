@@ -36,3 +36,11 @@ class DiagnosticsConfig:
 @dataclass(frozen=True, slots=True)
 class AdapterConfig:
     field_map: Mapping[str, str] | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class StreamingConfig:
+    """Execution-time streaming options (not part of buffered ExecutionPlan)."""
+
+    stream_results: bool = True
+    yield_per: int | None = None

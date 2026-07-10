@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Iterable, Mapping
+from collections.abc import Iterable, Mapping, Sequence
 from typing import Any, TypeVar
 
 from pydantic import BaseModel
@@ -9,6 +9,8 @@ from sqlalchemy.sql import Select
 from rowguard.adapters.sqlalchemy_row import SQLAlchemyRowAdapter
 from rowguard.errors import ConfigurationError
 from rowguard.execution.context import SyncExecutionContext
+from rowguard.execution.observer import StreamObserver
+from rowguard.execution.streaming import SyncStreamEngine
 from rowguard.execution.sync import SyncExecutionEngine
 from rowguard.planning.compiler import QueryPlanner
 from rowguard.planning.config import (
@@ -17,6 +19,7 @@ from rowguard.planning.config import (
     PushdownConfig,
     RejectionConfig,
     RejectionPolicyName,
+    StreamingConfig,
     ValidationConfig,
 )
 from rowguard.planning.execution_plan import (
@@ -30,6 +33,7 @@ from rowguard.planning.request import QueryRequest
 from rowguard.rejection.base import RejectionPolicy
 from rowguard.rejection.policies import CollectPolicy, RaisePolicy, SkipPolicy
 from rowguard.results.query_result import QueryResult
+from rowguard.results.stream_result import StreamResult
 from rowguard.validation.pydantic import PydanticValidator
 
 T = TypeVar("T", bound=BaseModel)
@@ -186,17 +190,54 @@ def execute(
 
 def stream(
     *,
-    session: Any,
-    statement: Select[Any],
+    session: Any | None = None,
+    connection: Any | None = None,
+    table: Any | None = None,
+    statement: Select[Any] | None = None,
     model: type[T],
+    source: Any | None = None,
+    where: Iterable[Any] = (),
+    field_map: Mapping[str, str] | None = None,
+    column_map: Mapping[str, Any] | None = None,
+    parameters: Mapping[str, object] | None = None,
     on_reject: str = "raise",
-) -> Iterable[T]:
+    use_sqlrules: bool = True,
+    compiled_rules: Mapping[str, Any] | None = None,
+    strict: bool | None = None,
+    yield_per: int | None = None,
+    observers: Sequence[StreamObserver] | None = None,
+) -> StreamResult[T]:
     """Stream validated models without buffering all accepted rows.
 
-    Deferred until 0.3.0.
+    Pass exactly one of ``table`` or ``statement``. Accepted models are yielded
+    incrementally and never retained on the result object.
     """
-    raise NotImplementedError(
-        "stream() is deferred to RowGuard 0.3.0; use select()/execute() for buffered results"
+    if (table is None) == (statement is None):
+        raise ConfigurationError("Pass exactly one of table= or statement=")
+    if table is not None and source is not None:
+        raise ConfigurationError("Pass only one of table= or source=")
+
+    plan = compile_plan(
+        model=model,
+        table=table,
+        statement=statement,
+        source=source,
+        where=where,
+        field_map=field_map,
+        column_map=column_map,
+        parameters=parameters,
+        on_reject=on_reject,
+        use_sqlrules=use_sqlrules,
+        compiled_rules=compiled_rules,
+        pushdown_source=source if statement is not None else None,
+        strict=strict,
+    )
+    context = SyncExecutionContext(session=session, connection=connection)
+    return SyncStreamEngine[T]().open(
+        plan,
+        context,
+        streaming=StreamingConfig(stream_results=True, yield_per=yield_per),
+        observers=observers or (),
     )
 
 

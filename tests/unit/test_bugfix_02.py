@@ -18,7 +18,6 @@ from rowguard.errors import (
 )
 from rowguard.execution.context import SyncExecutionContext
 from rowguard.execution.processor import process_row
-from rowguard.execution.streaming import StreamResult
 from rowguard.execution.sync import SyncExecutionEngine
 from rowguard.integrations.sqlrules import SQLRulesBridge
 from rowguard.planning.compiler import QueryPlanner
@@ -257,12 +256,6 @@ def test_public_compiled_rules_via_compile_plan() -> None:
     )
     assert plan.pushdown_plan.precompiled is True
     assert any(d.code == "planning.precompiled_rules" for d in plan.diagnostics)
-
-
-def test_stream_result_raises_not_implemented() -> None:
-    stream = StreamResult[UserRead]()
-    with pytest.raises(NotImplementedError, match=r"0\.3\.0"):
-        next(stream)
 
 
 def test_cache_rejects_non_positive_max_entries() -> None:

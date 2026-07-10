@@ -1,55 +1,19 @@
 from __future__ import annotations
 
 from collections.abc import Iterable, Mapping
-from dataclasses import dataclass, field
 from time import perf_counter_ns
 from typing import Any, Generic, TypeVar
 
 from pydantic import BaseModel
 
-from rowguard.diagnostics import Diagnostic
 from rowguard.errors import QueryExecutionError, ResultAssemblyError, RowGuardError
 from rowguard.execution.context import SyncExecutionContext
 from rowguard.execution.processor import ProcessedRow, process_row
+from rowguard.execution.state import ExecutionState
 from rowguard.planning.execution_plan import ExecutionPlan
 from rowguard.results.query_result import QueryResult
-from rowguard.results.rejected_row import RejectedRow
-from rowguard.statistics import QueryStatistics
 
 T = TypeVar("T", bound=BaseModel)
-
-
-@dataclass(slots=True)
-class _MutableStatistics:
-    rows_read: int = 0
-    rows_validated: int = 0
-    rows_accepted: int = 0
-    rows_rejected: int = 0
-    execution_time_ns: int = 0
-    adaptation_time_ns: int = 0
-    validation_time_ns: int = 0
-    rejection_time_ns: int = 0
-
-    def snapshot(self) -> QueryStatistics:
-        return QueryStatistics(
-            rows_read=self.rows_read,
-            rows_validated=self.rows_validated,
-            rows_accepted=self.rows_accepted,
-            rows_rejected=self.rows_rejected,
-            execution_time_ns=self.execution_time_ns,
-            adaptation_time_ns=self.adaptation_time_ns,
-            validation_time_ns=self.validation_time_ns,
-            rejection_time_ns=self.rejection_time_ns,
-        )
-
-
-@dataclass(slots=True)
-class ExecutionState(Generic[T]):
-    plan: ExecutionPlan[T]
-    statistics: _MutableStatistics = field(default_factory=_MutableStatistics)
-    accepted: list[T] = field(default_factory=list)
-    rejected: list[RejectedRow] = field(default_factory=list)
-    diagnostics: list[Diagnostic] = field(default_factory=list)
 
 
 class SyncExecutionEngine(Generic[T]):
@@ -116,19 +80,12 @@ class SyncExecutionEngine(Generic[T]):
         processed: ProcessedRow[T],
     ) -> bool:
         """Update state from a processed row. Returns whether to continue."""
-        state.statistics.rows_read += 1
-        state.statistics.adaptation_time_ns += processed.adaptation_time_ns
-        state.statistics.validation_time_ns += processed.validation_time_ns
-        state.statistics.rejection_time_ns += processed.rejection_time_ns
-        if processed.validated:
-            state.statistics.rows_validated += 1
+        state.statistics.record_processed(processed)
 
         if processed.model is not None:
-            state.statistics.rows_accepted += 1
             state.accepted.append(processed.model)
             return True
 
-        state.statistics.rows_rejected += 1
         if processed.retain_rejection and processed.rejected is not None:
             state.rejected.append(processed.rejected)
         return processed.continue_processing
