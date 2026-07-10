@@ -1,6 +1,6 @@
 # Bundle Manifest
 
-Included files:
+Included files for RowGuard **0.2.0**:
 
 - `.github/workflows/benchmarks.yml`
 - `.github/workflows/ci.yml`
@@ -21,8 +21,14 @@ Included files:
 - `docs/` (architecture, developer, integrations, rejection, validation)
 - `examples/basic.py`
 - `pyproject.toml`
-- `src/rowguard/` (package implementation)
+- `src/rowguard/` including:
+  - `api.py`, `cache.py`, `diagnostics.py`, `errors.py`, `statistics.py`
+  - `adapters/`, `execution/` (context, processor, sync; streaming stub)
+  - `integrations/` (core, sqlrules; ORM/SQLModel stubs for 0.5.0)
+  - `planning/` (compiler, config, execution_plan, request)
+  - `plugins/`, `rejection/`, `results/`, `validation/`
 - `tests/conftest.py`
 - `tests/integration/test_core.py`
 - `tests/typing/query_result_typing.py`
-- `tests/unit/` (adapter, planner, processor, policies, result, validator, coverage edges)
+- `tests/unit/` (planner, planning_02, processor, policies, result, validator,
+  adapter, coverage edges, bugfix regressions, bugfix_02)

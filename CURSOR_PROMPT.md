@@ -1,40 +1,34 @@
 # Cursor Build Prompt
 
-Build RowGuard incrementally from the architecture and specification documents in
+Build and maintain RowGuard from the architecture and specification documents in
 this repository.
 
-Start with milestone 0.1.0 only.
+**Current shipped release: 0.2.0.** Do not re-implement 0.1.0/0.2.0 unless fixing
+regressions. Next planned milestone is **0.3.0 (streaming)** per `ROADMAP.md`
+and `docs/developer/MILESTONES.md` (MILESTONES is authoritative).
 
-## Required 0.1.0 Scope
+## Shipped through 0.2.0
 
 - Python 3.10+
 - Pydantic v2
 - SQLAlchemy 2.x
-- SQLRules integration
+- SQLRules integration (`sqlrules>=0.4.0`)
 - SQLAlchemy Core `Table` and `Select`
 - Sync `Session` and `Connection`
-- `select()`
-- `execute()`
-- `validate_rows()`
-- `QueryResult[T]`
-- `RejectedRow`
-- `QueryStatistics`
-- Rejection policies:
-  - raise
-  - collect
-  - skip
-- Mapping-based validation
-- SQLite tests
-- PostgreSQL-ready design
+- `select()`, `execute()`, `validate_rows()`, `compile_plan()`
+- Staged immutable `ExecutionPlan` and planning configs
+- `QueryResult[T]`, `RejectedRow`, `QueryStatistics`
+- Rejection policies: raise, collect, skip
+- Mapping-based validation and plan-time field/column map checks
+- SQLite unit + integration tests
 - Strict typing
-- No hidden global mutable state
 - No ORM relationship traversal
-- No raw SQL rewriting
-- No async implementation until sync core is stable
+- No async until 0.4.0
+- `stream()` raises `NotImplementedError` until 0.3.0
 
 ## Implementation Rules
 
-1. Read all documents under `docs/`.
+1. Read all documents under `docs/`; treat MILESTONES as authoritative for scope.
 2. Preserve package boundaries:
    - SQLAlchemy owns SQL.
    - SQLRules owns constraint compilation.
@@ -44,11 +38,12 @@ Start with milestone 0.1.0 only.
 4. Use immutable plans and result objects.
 5. Keep mutable state per execution.
 6. Add tests before moving to the next subsystem.
-7. Do not implement deferred features.
-8. Keep docs aligned with code.
+7. Do not implement deferred features ahead of their milestone.
+8. Keep docs aligned with code (especially README / API.md / SPEC.md).
 9. Run Ruff, mypy, pytest, and benchmark smoke tests before completion.
 
-## First Deliverable
+## Next Deliverable
 
-Implement the 0.1.0 public API and all unit/integration tests required by
-`docs/developer/TESTING.md`.
+Implement the **0.3.0 streaming** public API and tests required by
+`docs/developer/MILESTONES.md` and `docs/architecture/STREAMING.md`, without
+breaking 0.2.0 call sites.
