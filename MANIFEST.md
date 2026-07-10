@@ -1,6 +1,6 @@
 # Bundle Manifest
 
-Included files for RowGuard **0.3.0**:
+Included files for RowGuard **0.3.1**:
 
 - `.github/workflows/benchmarks.yml`
 - `.github/workflows/ci.yml`

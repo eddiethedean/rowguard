@@ -21,11 +21,14 @@ from rowguard.statistics import QueryStatistics
 T = TypeVar("T", bound=BaseModel)
 
 
-class StreamResult(Generic[T], Iterator[T]):
+class StreamResult(Generic[T]):
     """Incremental validated-row iterator with context-managed DB cleanup.
 
     Accepted models are yielded and never retained. Rejected rows are retained
     only when the rejection policy requests it (``collect``).
+
+    Prefer ``with rowguard.stream(...) as stream:`` or ``for model in stream`` —
+    both paths close the underlying SQLAlchemy result.
     """
 
     def __init__(
@@ -48,6 +51,7 @@ class StreamResult(Generic[T], Iterator[T]):
         self._index = 0
         self._started = False
         self._closed = False
+        self._completed = False
         self._started_ns = 0
         self._primary_error: BaseException | None = None
 
@@ -87,9 +91,15 @@ class StreamResult(Generic[T], Iterator[T]):
     def execution_time(self) -> float:
         return self._statistics.execution_time_ns / 1_000_000_000
 
-    def __iter__(self) -> StreamResult[T]:
+    def __iter__(self) -> Iterator[T]:
         self._ensure_started()
-        return self
+        try:
+            while True:
+                yield self._next_model()
+        except StopIteration:
+            return
+        finally:
+            self.close()
 
     def __enter__(self) -> StreamResult[T]:
         self._ensure_started()
@@ -108,6 +118,32 @@ class StreamResult(Generic[T], Iterator[T]):
 
     def __next__(self) -> T:
         self._ensure_started()
+        return self._next_model()
+
+    def close(self) -> None:
+        if self._closed:
+            return
+        self._closed = True
+        self._stamp_execution_time()
+
+        close_error: BaseException | None = None
+        if self._db_result is not None:
+            close = getattr(self._db_result, "close", None)
+            if callable(close):
+                try:
+                    close()
+                except Exception as error:
+                    close_error = error
+            self._db_result = None
+            self._row_iter = None
+
+        self._notify_closed()
+
+        if close_error is not None and self._primary_error is None:
+            self._primary_error = close_error
+            raise close_error
+
+    def _next_model(self) -> T:
         if self._closed:
             raise StopIteration
 
@@ -116,8 +152,7 @@ class StreamResult(Generic[T], Iterator[T]):
             try:
                 row = next(self._row_iter)
             except StopIteration:
-                self._notify_complete()
-                self.close()
+                self._finish_complete()
                 raise
 
             index = self._index
@@ -148,37 +183,32 @@ class StreamResult(Generic[T], Iterator[T]):
                 if processed.retain_rejection:
                     self._rejected.append(processed.rejected)
 
-            if not processed.continue_processing:
-                self._notify_complete()
+            if processed.raise_error is not None:
+                self._primary_error = processed.raise_error
+                self._notify_failed(processed.raise_error)
                 self.close()
+                raise processed.raise_error
+
+            if not processed.continue_processing:
+                self._finish_complete()
                 raise StopIteration
 
-    def close(self) -> None:
-        if self._closed:
+    def _finish_complete(self) -> None:
+        if self._completed:
+            self.close()
             return
-        self._closed = True
+        self._completed = True
+        self._stamp_execution_time()
+        self._notify_complete()
+        self.close()
+
+    def _stamp_execution_time(self) -> None:
         if self._started_ns:
             self._statistics.execution_time_ns = perf_counter_ns() - self._started_ns
 
-        close_error: BaseException | None = None
-        if self._db_result is not None:
-            close = getattr(self._db_result, "close", None)
-            if callable(close):
-                try:
-                    close()
-                except Exception as error:
-                    close_error = error
-            self._db_result = None
-            self._row_iter = None
-
-        self._notify_closed()
-
-        if close_error is not None and self._primary_error is None:
-            raise close_error
-
     def _ensure_started(self) -> None:
         if self._closed:
-            return
+            raise QueryExecutionError("StreamResult is closed and cannot be reused")
         if self._started:
             return
         self._started = True
@@ -206,10 +236,6 @@ class StreamResult(Generic[T], Iterator[T]):
         if self._streaming.stream_results:
             options["stream_results"] = True
         if self._streaming.yield_per is not None:
-            if self._streaming.yield_per <= 0:
-                from rowguard.errors import ConfigurationError
-
-                raise ConfigurationError("yield_per must be a positive integer")
             options["yield_per"] = self._streaming.yield_per
         if options:
             statement = statement.execution_options(**options)
@@ -256,9 +282,11 @@ class StreamResult(Generic[T], Iterator[T]):
 
     def _notify_failed(self, error: BaseException) -> None:
         for observer in self._observers:
-            with suppress(Exception):
-                # Never mask the primary stream failure.
+            try:
                 observer.on_stream_failed(error=error)
+            except Exception as observer_error:
+                # Never mask the primary stream failure.
+                self._handle_observer_error(observer_error)
 
     def _notify_closed(self) -> None:
         for observer in self._observers:
@@ -267,6 +295,9 @@ class StreamResult(Generic[T], Iterator[T]):
             except Exception as error:
                 if self._primary_error is None:
                     self._handle_observer_error(error)
+                else:
+                    with suppress(Exception):
+                        self._handle_observer_error(error)
 
     def _handle_observer_error(self, error: Exception) -> None:
         self._diagnostics.append(

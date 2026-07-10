@@ -7,9 +7,9 @@ Pydantic model, and explicitly handles rows that fail validation.
 
 ## Status
 
-**0.3.0** — synchronous streaming via `stream()` / `StreamResult`, context-managed
-cleanup, SQLAlchemy `stream_results` / `yield_per`, and progress observers.
-Async streaming remains deferred to 0.4.0; ORM remains deferred to 0.5.0.
+**0.3.1** — streaming lifecycle fixes, raise-policy stream stats, and planning
+correctness for `field_map` / plan cache / `compile_plan`. Async streaming remains
+deferred to 0.4.0; ORM remains deferred to 0.5.0.
 
 ## Install
 
@@ -84,7 +84,7 @@ with Session(engine) as session:
 With `use_sqlrules=True` (the default), supported constraints such as `age >= 18`
 are pushed into SQL, so invalid candidate rows may never be returned.
 
-## Public API (0.3.0)
+## Public API (0.3.1)
 
 | Function | Purpose |
 | --- | --- |

@@ -68,6 +68,32 @@ def _column_map_fingerprint(column_map: dict[str, Any] | None) -> tuple[Any, ...
     return tuple(sorted((key, id(value)) for key, value in column_map.items()))
 
 
+def _rebinding_cached_plan(
+    cached: ExecutionPlan[Any],
+    *,
+    parameters: dict[str, object],
+    execution_id: str,
+) -> ExecutionPlan[Any]:
+    """Rebind parameters and rewrite diagnostic execution IDs on a cache hit."""
+    diagnostics = tuple(
+        replace(diagnostic, execution_id=execution_id) for diagnostic in cached.diagnostics
+    )
+    pushdown_plan = replace(
+        cached.pushdown_plan,
+        diagnostics=tuple(
+            replace(diagnostic, execution_id=execution_id)
+            for diagnostic in cached.pushdown_plan.diagnostics
+        ),
+    )
+    return replace(
+        cached,
+        parameters=parameters,
+        execution_id=execution_id,
+        diagnostics=diagnostics,
+        pushdown_plan=pushdown_plan,
+    )
+
+
 class QueryPlanner(Generic[T]):
     def __init__(
         self,
@@ -88,10 +114,11 @@ class QueryPlanner(Generic[T]):
             assert self._cache is not None
             cached = self._cache.get(cache_key)
             if cached is not None:
-                return replace(
+                execution_id = uuid4().hex
+                return _rebinding_cached_plan(
                     cached,
                     parameters=dict(request.parameters),
-                    execution_id=uuid4().hex,
+                    execution_id=execution_id,
                 )
 
         execution_id = uuid4().hex
@@ -266,6 +293,16 @@ class QueryPlanner(Generic[T]):
             else (resolved.selectable if resolved is not None else None)
         )
         if pushdown_source is None:
+            if (
+                request.pushdown.compiled_rules is not None
+                or request.pushdown.column_map is not None
+            ):
+                raise PlanningError(
+                    "compiled_rules and column_map require a pushdown source "
+                    "(table= or source=); statement-only queries cannot apply pushdown",
+                    stage="pushdown",
+                    execution_id=execution_id,
+                )
             return PushdownPlan(
                 enabled=False,
                 diagnostics=(
@@ -358,6 +395,7 @@ class QueryPlanner(Generic[T]):
         resolved: ResolvedSource | None,
         execution_id: str,
     ) -> AdapterPlan:
+        del resolved  # Result-key field_map values are checked at adaptation time.
         field_map = request.adapter.field_map
         if field_map:
             model_fields = _model_field_names(request.model)
@@ -368,20 +406,8 @@ class QueryPlanner(Generic[T]):
                     stage="adapter",
                     execution_id=execution_id,
                 )
-            if resolved is not None and resolved.columns:
-                missing = sorted(
-                    {
-                        column_key
-                        for column_key in field_map.values()
-                        if column_key not in resolved.columns
-                    }
-                )
-                if missing:
-                    raise PlanningError(
-                        "field_map source columns not found on source: " + ", ".join(missing),
-                        stage="adapter",
-                        execution_id=execution_id,
-                    )
+            # field_map values are result keys (labels), not necessarily source
+            # table column names — missing keys are enforced at adaptation time.
 
         expected = (
             tuple(field_map.keys())

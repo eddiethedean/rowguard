@@ -55,10 +55,12 @@ def test_process_row_adaptation_failure_collect() -> None:
 
 
 def test_process_row_adaptation_failure_raise() -> None:
-    with pytest.raises(RowAdaptationError) as exc_info:
-        process_row(row=object(), index=3, plan=_plan(policy=RaisePolicy()))
-    assert exc_info.value.row_index == 3
-    assert exc_info.value.model is UserRead
+    processed = process_row(row=object(), index=3, plan=_plan(policy=RaisePolicy()))
+    assert processed.model is None
+    assert processed.raise_error is not None
+    assert isinstance(processed.raise_error, RowAdaptationError)
+    assert processed.raise_error.row_index == 3
+    assert processed.raise_error.model is UserRead
 
 
 def test_raise_policy_wraps_non_adaptation_error() -> None:
@@ -71,10 +73,11 @@ def test_raise_policy_wraps_non_adaptation_error() -> None:
         validation_error=None,
         adaptation_error=ValueError("boom"),
     )
-    with pytest.raises(RowAdaptationError, match="boom") as exc_info:
-        RaisePolicy().handle(rejected)
-    assert exc_info.value.row_index == 4
-    assert exc_info.value.model is UserRead
+    decision = RaisePolicy().handle(rejected)
+    assert isinstance(decision.error, RowAdaptationError)
+    assert decision.error.row_index == 4
+    assert decision.error.model is UserRead
+    assert "boom" in str(decision.error)
 
 
 def test_parameters_forwarded_nonempty(session, users_table) -> None:

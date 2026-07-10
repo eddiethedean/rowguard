@@ -3,11 +3,11 @@
 Build and maintain RowGuard from the architecture and specification documents in
 this repository.
 
-**Current shipped release: 0.3.0.** Do not re-implement 0.1.0–0.3.0 unless fixing
+**Current shipped release: 0.3.1.** Do not re-implement 0.1.0–0.3.1 unless fixing
 regressions. Next planned milestone is **0.4.0 (async)** per `ROADMAP.md`
 and `docs/developer/MILESTONES.md` (MILESTONES is authoritative).
 
-## Shipped through 0.3.0
+## Shipped through 0.3.1
 
 - Python 3.10+
 - Pydantic v2
@@ -46,4 +46,4 @@ and `docs/developer/MILESTONES.md` (MILESTONES is authoritative).
 ## Next Deliverable
 
 Implement the **0.4.0 async** public API and tests required by
-`docs/developer/MILESTONES.md`, without breaking 0.3.0 call sites.
+`docs/developer/MILESTONES.md`, without breaking 0.3.x call sites.

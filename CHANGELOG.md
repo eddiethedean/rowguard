@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.1] — 2026-07-10
+
+### Fixed
+
+- Stream iteration without `with` now closes the SQLAlchemy result on early
+  `break` / consumer exit (`for model in stream`)
+- Raise-policy rejections are recorded in stream statistics before raising, so
+  post-mortem `is_clean` / `rows_rejected` are accurate
+- `on_stream_complete` observers receive a non-zero `execution_time_ns` after
+  rows were processed
+- Close failures after a successful complete no longer emit a spurious
+  `on_stream_failed` when using a context manager
+- Re-entering a closed `StreamResult` raises `QueryExecutionError` instead of
+  silently empty-iterating
+- Invalid `yield_per` is rejected at `stream()` / `StreamingConfig` construction
+- Plan-time `field_map` no longer treats values as source table columns (they
+  are result keys); labeled `execute` + `source=` + `field_map` works
+- Plan-cache hits rewrite diagnostic `execution_id`s to match the rebound plan
+- `compile_plan` rejects `table=` + `statement=` together
+- `compiled_rules` / `column_map` without a pushdown source raise `PlanningError`
+  instead of being silently dropped
+
 ## [0.3.0] — 2026-07-10
 
 ### Added
@@ -112,6 +134,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - ORM / SQLModel integrations
 - Callback and quarantine rejection policies
 
+[0.3.1]: https://github.com/eddiethedean/rowguard/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/eddiethedean/rowguard/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/eddiethedean/rowguard/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/eddiethedean/rowguard/releases/tag/v0.1.0

@@ -231,7 +231,7 @@ rejected.raw_row
 
 ## Async API (Planned — 0.4.0)
 
-> Not available in 0.3.0.
+> Not available in 0.3.1.
 
 ``` python
 await rowguard.aselect(...)

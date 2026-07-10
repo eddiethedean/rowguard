@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 
 import rowguard
-from rowguard.errors import ConfigurationError, RowValidationError
+from rowguard.errors import ConfigurationError, QueryExecutionError, RowValidationError
 from rowguard.execution.observer import BaseStreamObserver
 
 
@@ -113,6 +113,44 @@ def test_stream_raise_policy_closes(session, users_table) -> None:
     with pytest.raises(RowValidationError), stream:
         list(stream)
     assert stream.closed
+    assert stream.statistics.rows_rejected >= 1
+    assert not stream.is_clean
+
+
+def test_stream_early_break_without_with_closes(session, users_table) -> None:
+    stream = rowguard.stream(
+        session=session,
+        table=users_table,
+        model=UserRead,
+        on_reject="skip",
+        use_sqlrules=False,
+    )
+    for model in stream:
+        assert model.name == "Ada"
+        break
+    assert stream.closed
+
+
+def test_stream_complete_observer_sees_execution_time(session, users_table) -> None:
+    class TimingObserver(BaseStreamObserver):
+        def __init__(self) -> None:
+            self.complete_ns: int | None = None
+
+        def on_stream_complete(self, *, statistics: object) -> None:
+            self.complete_ns = getattr(statistics, "execution_time_ns", None)
+
+    observer = TimingObserver()
+    with rowguard.stream(
+        session=session,
+        table=users_table,
+        model=UserRead,
+        on_reject="skip",
+        use_sqlrules=False,
+        observers=[observer],
+    ) as stream:
+        list(stream)
+    assert observer.complete_ns is not None
+    assert observer.complete_ns > 0
 
 
 def test_stream_with_connection(engine, users_table) -> None:
@@ -153,7 +191,7 @@ def test_stream_manual_close(session, users_table) -> None:
     assert first.name == "Ada"
     stream.close()
     assert stream.closed
-    with pytest.raises(StopIteration):
+    with pytest.raises(QueryExecutionError, match="closed"):
         next(stream)
 
 
@@ -209,16 +247,15 @@ def test_stream_requires_table_or_statement(session, users_table) -> None:
 
 
 def test_stream_invalid_yield_per(session, users_table) -> None:
-    stream = rowguard.stream(
-        session=session,
-        table=users_table,
-        model=UserRead,
-        on_reject="skip",
-        use_sqlrules=False,
-        yield_per=0,
-    )
     with pytest.raises(ConfigurationError, match="yield_per"):
-        next(stream)
+        rowguard.stream(
+            session=session,
+            table=users_table,
+            model=UserRead,
+            on_reject="skip",
+            use_sqlrules=False,
+            yield_per=0,
+        )
 
 
 def test_stream_yield_per(session, users_table) -> None:

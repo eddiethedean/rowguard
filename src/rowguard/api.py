@@ -104,6 +104,8 @@ def compile_plan(
     """Compile an immutable execution plan without running a query."""
     if table is not None and source is not None:
         raise ConfigurationError("Pass only one of table= or source=")
+    if table is not None and statement is not None:
+        raise ConfigurationError("Pass only one of table= or statement=")
     request = _build_request(
         model=model,
         source=table if table is not None else source,
@@ -216,6 +218,8 @@ def stream(
         raise ConfigurationError("Pass exactly one of table= or statement=")
     if table is not None and source is not None:
         raise ConfigurationError("Pass only one of table= or source=")
+    if yield_per is not None and yield_per <= 0:
+        raise ConfigurationError("yield_per must be a positive integer")
 
     plan = compile_plan(
         model=model,

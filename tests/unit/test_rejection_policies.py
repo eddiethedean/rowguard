@@ -3,7 +3,7 @@ from __future__ import annotations
 import pytest
 from pydantic import BaseModel, ValidationError
 
-from rowguard.errors import RowAdaptationError, RowValidationError
+from rowguard.errors import ResultAssemblyError, RowAdaptationError, RowValidationError
 from rowguard.rejection.policies import CollectPolicy, RaisePolicy, SkipPolicy
 from rowguard.results.rejected_row import RejectedRow
 
@@ -29,19 +29,23 @@ def test_collect_retains() -> None:
     decision = CollectPolicy().handle(make_rejected())
     assert decision.continue_processing
     assert decision.retain_rejection
+    assert decision.error is None
 
 
 def test_skip_does_not_retain() -> None:
     decision = SkipPolicy().handle(make_rejected())
     assert decision.continue_processing
     assert not decision.retain_rejection
+    assert decision.error is None
 
 
 def test_raise_stops() -> None:
-    with pytest.raises(RowValidationError) as exc_info:
-        RaisePolicy().handle(make_rejected())
-    assert exc_info.value.row_index == 0
-    assert exc_info.value.model is UserRead
+    decision = RaisePolicy().handle(make_rejected())
+    assert not decision.continue_processing
+    assert not decision.retain_rejection
+    assert isinstance(decision.error, RowValidationError)
+    assert decision.error.row_index == 0
+    assert decision.error.model is UserRead
 
 
 def test_raise_adaptation_error() -> None:
@@ -52,10 +56,11 @@ def test_raise_adaptation_error() -> None:
         validation_error=None,
         adaptation_error=RowAdaptationError("bad shape"),
     )
-    with pytest.raises(RowAdaptationError, match="bad shape") as exc_info:
-        RaisePolicy().handle(rejected)
-    assert exc_info.value.row_index == 1
-    assert exc_info.value.model is UserRead
+    decision = RaisePolicy().handle(rejected)
+    assert isinstance(decision.error, RowAdaptationError)
+    assert decision.error.row_index == 1
+    assert decision.error.model is UserRead
+    assert str(decision.error) == "bad shape"
 
 
 def test_raise_requires_error() -> None:
@@ -66,5 +71,5 @@ def test_raise_requires_error() -> None:
         validation_error=None,
         adaptation_error=None,
     )
-    with pytest.raises(RuntimeError, match="requires a validation or adaptation error"):
+    with pytest.raises(ResultAssemblyError, match="requires a validation or adaptation error"):
         RaisePolicy().handle(rejected)

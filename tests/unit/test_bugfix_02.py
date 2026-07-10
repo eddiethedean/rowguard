@@ -98,6 +98,55 @@ def test_plan_cache_rebinds_parameters_on_hit() -> None:
     assert first.parameters == {"uid": 1}
     assert second.parameters == {"uid": 2}
     assert first.execution_id != second.execution_id
+    assert all(d.execution_id == second.execution_id for d in second.diagnostics)
+    assert all(
+        d.execution_id == second.execution_id for d in second.pushdown_plan.diagnostics
+    )
+
+
+def test_labeled_field_map_with_source_plans(session, users_table) -> None:
+    class LegacyUser(BaseModel):
+        id: int
+        name: str
+        age: Annotated[int, Field(ge=18)]
+
+    stmt = select(
+        users_table.c.id.label("user_id"),
+        users_table.c.name.label("display_name"),
+        users_table.c.age,
+    )
+    result = rowguard.execute(
+        session=session,
+        statement=stmt,
+        source=users_table,
+        model=LegacyUser,
+        field_map={"id": "user_id", "name": "display_name"},
+        on_reject="collect",
+        use_sqlrules=False,
+    )
+    assert result.valid_count == 2
+
+
+def test_compile_plan_rejects_table_and_statement() -> None:
+    a, _ = _tables()
+    with pytest.raises(ConfigurationError, match="table= or statement="):
+        rowguard.compile_plan(
+            table=a,
+            statement=select(a),
+            model=UserRead,
+            use_sqlrules=False,
+        )
+
+
+def test_column_map_without_source_raises() -> None:
+    a, _ = _tables()
+    with pytest.raises(PlanningError, match="column_map"):
+        rowguard.compile_plan(
+            statement=select(a.c.id, a.c.name, a.c.age),
+            model=UserRead,
+            column_map={"age": a.c.age},
+            use_sqlrules=True,
+        )
 
 
 def test_plan_cache_distinguishes_column_map_values() -> None:

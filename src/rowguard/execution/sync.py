@@ -88,6 +88,8 @@ class SyncExecutionEngine(Generic[T]):
 
         if processed.retain_rejection and processed.rejected is not None:
             state.rejected.append(processed.rejected)
+        if processed.raise_error is not None:
+            raise processed.raise_error
         return processed.continue_processing
 
     def _execute_statement(

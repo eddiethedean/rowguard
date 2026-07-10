@@ -44,3 +44,9 @@ class StreamingConfig:
 
     stream_results: bool = True
     yield_per: int | None = None
+
+    def __post_init__(self) -> None:
+        if self.yield_per is not None and self.yield_per <= 0:
+            from rowguard.errors import ConfigurationError
+
+            raise ConfigurationError("yield_per must be a positive integer")

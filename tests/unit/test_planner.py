@@ -106,16 +106,17 @@ def test_planner_field_map_unknown_model_field() -> None:
         )
 
 
-def test_planner_field_map_unknown_column() -> None:
-    with pytest.raises(PlanningError, match="source columns"):
-        QueryPlanner[UserRead]().compile(
-            QueryRequest(
-                model=UserRead,
-                source=_users(),
-                pushdown=PushdownConfig(enabled=False),
-                adapter=AdapterConfig(field_map={"id": "missing_col"}),
-            )
+def test_planner_field_map_allows_result_keys_not_on_source() -> None:
+    # field_map values are result keys (e.g. labels), validated at adaptation time.
+    plan = QueryPlanner[UserRead]().compile(
+        QueryRequest(
+            model=UserRead,
+            source=_users(),
+            pushdown=PushdownConfig(enabled=False),
+            adapter=AdapterConfig(field_map={"id": "user_id", "name": "display_name"}),
         )
+    )
+    assert plan.adapter_plan.field_map == {"id": "user_id", "name": "display_name"}
 
 
 def test_planner_column_map_unknown_model_field() -> None:

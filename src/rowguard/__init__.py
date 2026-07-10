@@ -15,7 +15,7 @@ from rowguard.results.rejected_row import RejectedRow
 from rowguard.results.stream_result import StreamResult
 from rowguard.statistics import QueryStatistics
 
-__version__ = "0.3.0"
+__version__ = "0.3.1"
 
 __all__ = [
     "BaseStreamObserver",

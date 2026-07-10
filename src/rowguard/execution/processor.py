@@ -24,6 +24,7 @@ class ProcessedRow(Generic[T]):
     validation_time_ns: int = 0
     rejection_time_ns: int = 0
     validated: bool = False
+    raise_error: BaseException | None = None
 
 
 def process_row(
@@ -131,4 +132,5 @@ def _handle_rejection(
         validation_time_ns=validation_time_ns,
         rejection_time_ns=rejection_time_ns,
         validated=validated,
+        raise_error=decision.error,
     )

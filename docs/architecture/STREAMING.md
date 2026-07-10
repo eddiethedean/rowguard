@@ -66,19 +66,25 @@ Rows are processed independently.
 # Public API
 
 ```python
-for model in rowguard.stream(
+with rowguard.stream(
     session=session,
     table=users,
     model=UserRead,
-):
-    process(model)
+) as stream:
+    for model in stream:
+        process(model)
 ```
+
+Bare ``for model in stream`` also closes the underlying result when the loop
+ends or breaks. Prefer the context manager when combining early exit with
+post-stream inspection of ``statistics`` / ``rejected``.
 
 Future async API:
 
 ```python
-async for model in rowguard.astream(...):
-    ...
+async with rowguard.astream(...) as stream:
+    async for model in stream:
+        ...
 ```
 
 ---

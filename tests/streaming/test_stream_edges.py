@@ -64,6 +64,12 @@ def test_stream_getattr_exports() -> None:
     from rowguard import results as results_pkg
 
     assert results_pkg.StreamResult is StreamResult
+    with pytest.raises(AttributeError):
+        _ = results_pkg.NotAThing  # type: ignore[attr-defined]
+    import rowguard.execution as execution_pkg
+
+    with pytest.raises(AttributeError):
+        _ = execution_pkg.NotAThing  # type: ignore[attr-defined]
 
 
 def test_stream_close_failure_does_not_mask_validation(session, users_table) -> None:
@@ -95,7 +101,7 @@ def test_stream_close_failure_does_not_mask_validation(session, users_table) -> 
     assert stream.closed
 
 
-def test_stream_close_failure_surfaces_when_clean() -> None:
+def test_stream_close_failure_inside_with_does_not_notify_failed() -> None:
     class BoomResult:
         def __iter__(self):
             return iter([])
@@ -106,6 +112,18 @@ def test_stream_close_failure_surfaces_when_clean() -> None:
     class BoomSession:
         def execute(self, *_args, **_kwargs):
             return BoomResult()
+
+    events: list[str] = []
+
+    class Obs(BaseStreamObserver):
+        def on_stream_complete(self, *, statistics: object) -> None:
+            events.append("complete")
+
+        def on_stream_failed(self, *, error: BaseException) -> None:
+            events.append(f"failed:{type(error).__name__}")
+
+        def on_stream_closed(self) -> None:
+            events.append("closed")
 
     plan = QueryPlanner[UserRead]().compile(
         QueryRequest(
@@ -118,9 +136,27 @@ def test_stream_close_failure_surfaces_when_clean() -> None:
     stream = SyncStreamEngine[UserRead]().open(
         plan,
         SyncExecutionContext(session=BoomSession()),
+        observers=[Obs()],
     )
-    with pytest.raises(RuntimeError, match="close failed"):
+    with pytest.raises(RuntimeError, match="close failed"), stream:
         list(stream)
+    assert "complete" in events
+    assert "closed" in events
+    assert not any(e.startswith("failed:") for e in events)
+
+
+def test_stream_reenter_after_close_raises(session, users_table) -> None:
+    stream = rowguard.stream(
+        session=session,
+        table=users_table,
+        model=UserRead,
+        on_reject="skip",
+        use_sqlrules=False,
+    )
+    list(stream)
+    assert stream.closed
+    with pytest.raises(QueryExecutionError, match="closed"), stream:
+        pass
 
 
 def test_stream_execute_failure_wraps() -> None:
@@ -175,7 +211,21 @@ def test_stream_observer_failures_on_all_hooks(session, users_table) -> None:
     assert codes.count("streaming.observer_error") >= 3
 
 
-def test_stream_failed_observer_on_raise(session, users_table) -> None:
+def test_stream_consumer_exception_without_with_closes(session, users_table) -> None:
+    stream = rowguard.stream(
+        session=session,
+        table=users_table,
+        model=UserRead,
+        on_reject="skip",
+        use_sqlrules=False,
+    )
+    with pytest.raises(RuntimeError, match="consumer boom"):
+        for _model in stream:
+            raise RuntimeError("consumer boom")
+    assert stream.closed
+
+
+def test_stream_failed_observer_records_diagnostic(session, users_table) -> None:
     class BoomFailed(BaseStreamObserver):
         def on_stream_failed(self, *, error: BaseException) -> None:
             raise RuntimeError("failed hook")
@@ -190,7 +240,7 @@ def test_stream_failed_observer_on_raise(session, users_table) -> None:
     )
     with pytest.raises(RowValidationError), stream:
         list(stream)
-    assert stream.closed
+    assert any(d.code == "streaming.observer_error" for d in stream.diagnostics)
 
 
 def test_stream_with_parameters(session, users_table) -> None:
@@ -244,7 +294,12 @@ def test_stream_consumer_exception_notifies_failed(session, users_table) -> None
     assert stream.closed
 
 
-def test_streaming_config_disables_stream_results() -> None:
+def test_streaming_config_rejects_non_positive_yield_per() -> None:
+    with pytest.raises(ConfigurationError, match="yield_per"):
+        StreamingConfig(yield_per=0)
+    with pytest.raises(ConfigurationError, match="yield_per"):
+        StreamingConfig(yield_per=-1)
+
     class CaptureSession:
         def __init__(self) -> None:
             self.options: object | None = None

@@ -2,7 +2,7 @@
 
 # RowGuard Specification
 
-## Current as of 0.3.0
+## Current as of 0.3.1
 
 Shipped surface:
 
@@ -203,7 +203,7 @@ because Pydantic remains the source of truth.
 
 # Supported Inputs
 
-Current (0.3.0):
+Current (0.3.1):
 
 -   SQLAlchemy Table
 -   SQLAlchemy Select

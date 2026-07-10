@@ -8,6 +8,7 @@ from rowguard.results.rejected_row import RejectedRow
 class RejectionDecision:
     continue_processing: bool
     retain_rejection: bool
+    error: BaseException | None = None
 
 
 class RejectionPolicy(Protocol):
