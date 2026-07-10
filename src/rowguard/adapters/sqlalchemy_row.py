@@ -23,12 +23,23 @@ class SQLAlchemyRowAdapter:
         mapping: dict[str, object] = dict(source)
         if self._field_map is not None:
             remapped: dict[str, object] = {}
+            missing: list[str] = []
             for field_name, column_key in self._field_map.items():
-                if column_key in mapping:
-                    remapped[field_name] = mapping[column_key]
-            # Preserve unmapped keys so Pydantic can apply extras/defaults policy.
+                if column_key not in mapping:
+                    missing.append(f"{field_name}->{column_key}")
+                    continue
+                remapped[field_name] = mapping[column_key]
+            if missing:
+                raise RowAdaptationError(
+                    "field_map source key(s) missing from row: " + ", ".join(missing)
+                )
+
+            reserved_sources = set(self._field_map.values())
+            reserved_destinations = set(self._field_map.keys())
             for key, value in mapping.items():
-                if key not in remapped and key not in self._field_map.values():
+                if key in reserved_sources or key in reserved_destinations:
+                    continue
+                if key not in remapped:
                     remapped[key] = value
             mapping = remapped
 

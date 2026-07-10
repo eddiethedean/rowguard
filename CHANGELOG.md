@@ -19,6 +19,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Optional `field_map` for result key remapping
 - SQLite integration tests, unit tests, CI, and example
 
+### Fixed
+
+- `field_map` no longer silently binds wrong keys or accepts defaults when mapped
+  source columns are missing (raises `RowAdaptationError`)
+- SQLAlchemy results are closed after buffered execution
+- Rows are processed incrementally so `raise` can abort without full prefetch
+- Adaptation failures record timing and enrich `RowAdaptationError` with
+  `row_index` / `model` under the raise policy
+- `execution_time` is end-to-end for SQL and `validate_rows` paths
+- `rows_validated` counts only rows that reached Pydantic validation
+- Explicit `statement` + `source` pushdown emits
+  `sqlrules.pushdown_source_explicit` diagnostic
+
 ### Deferred
 
 - `stream()` (planned for 0.3.0)

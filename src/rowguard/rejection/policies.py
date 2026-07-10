@@ -14,9 +14,13 @@ class RaisePolicy:
                 row_index=rejected.index,
             )
         if rejected.adaptation_error is not None:
-            if isinstance(rejected.adaptation_error, RowAdaptationError):
-                raise rejected.adaptation_error
-            raise RowAdaptationError(str(rejected.adaptation_error)) from rejected.adaptation_error
+            message = str(rejected.adaptation_error)
+            cause = rejected.adaptation_error
+            raise RowAdaptationError(
+                message,
+                model=rejected.model,
+                row_index=rejected.index,
+            ) from cause
         raise RuntimeError("RaisePolicy requires a validation or adaptation error")
 
 

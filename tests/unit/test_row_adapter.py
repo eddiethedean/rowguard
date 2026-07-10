@@ -26,6 +26,16 @@ def test_adapter_applies_field_map() -> None:
     assert adapted.mapping == {"id": 7, "name": "Ada", "extra": True}
 
 
+def test_adapter_field_map_missing_source_key_raises() -> None:
+    with pytest.raises(RowAdaptationError, match="missing"):
+        SQLAlchemyRowAdapter(field_map={"name": "display_name"}).adapt({"id": 1, "name": "Ada"})
+
+
+def test_adapter_field_map_does_not_fallback_to_destination_key() -> None:
+    with pytest.raises(RowAdaptationError, match="name->display_name"):
+        SQLAlchemyRowAdapter(field_map={"name": "display_name"}).adapt({"name": "Ada"})
+
+
 class _FakeRow:
     def __init__(self, mapping: dict[str, object]) -> None:
         self._mapping = mapping

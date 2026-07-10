@@ -20,21 +20,27 @@ result = rowguard.select(
     session=session,
     table=users,
     model=UserRead,
-    where=None,
+    where=(),
+    field_map=None,
     column_map=None,
+    parameters=None,
     on_reject="raise",
+    use_sqlrules=True,
 )
 ```
 
 Parameters:
 
--   `session`: SQLAlchemy `Session`
--   `table`: SQLAlchemy `Table`, ORM model, or selectable
+-   `session` or `connection`: exactly one SQLAlchemy execution context
+-   `table`: SQLAlchemy Core `Table` or selectable
 -   `model`: Pydantic `BaseModel` subclass
--   `where`: optional additional SQLAlchemy expressions
--   `column_map`: optional field-to-column mapping
+-   `where`: optional additional SQLAlchemy expressions (default `()`)
+-   `field_map`: optional model-field → result-key mapping
+-   `column_map`: optional model-field → SQLAlchemy column mapping for SQLRules
+-   `parameters`: optional bound parameters forwarded to SQLAlchemy
 -   `on_reject`: `raise`, `collect`, or `skip`
     (`callback` / `quarantine` / `log` planned for later releases)
+-   `use_sqlrules`: enable SQLRules constraint pushdown (default `True`)
 
 Returns:
 
@@ -54,7 +60,7 @@ Validate rows incrementally while streaming large result sets.
 ``` python
 for model in rowguard.stream(
     session=session,
-    table=users,
+    statement=stmt,
     model=UserRead,
 ):
     ...
@@ -71,8 +77,15 @@ result = rowguard.execute(
     session=session,
     statement=stmt,
     model=UserRead,
+    source=None,
+    on_reject="raise",
+    use_sqlrules=True,
 )
 ```
+
+Optional `source=` supplies the selectable used for SQLRules pushdown when
+`use_sqlrules=True`. When both `statement` and `source` are provided, RowGuard
+emits a `sqlrules.pushdown_source_explicit` diagnostic.
 
 ------------------------------------------------------------------------
 
@@ -84,6 +97,8 @@ Validate an iterable of row mappings without executing SQL.
 result = rowguard.validate_rows(
     rows=rows,
     model=UserRead,
+    field_map=None,
+    on_reject="raise",
 )
 ```
 
@@ -96,38 +111,51 @@ result.models
 result.rejected
 result.statistics
 result.statement
+result.diagnostics
 result.execution_time
 ```
 
-Convenience methods:
+Convenience properties:
 
 ``` python
 result.valid_count
-result.rejected_count
-result.has_rejections()
+result.rejected_count   # retained rejections only (0 under skip)
+result.has_rejections   # True if any row was rejected (including skip)
+result.is_clean
 ```
+
+`has_rejections` is based on `statistics.rows_rejected`, not on whether
+rejected rows were retained. Under `skip`, `has_rejections` may be `True`
+while `rejected` is empty.
+
+`execution_time` is end-to-end wall time in seconds (statement fetch plus
+validation for SQL paths; full processing for `validate_rows`).
 
 ## RejectedRow
 
 Each rejected row exposes:
 
 ``` python
-rejected.raw_row
+rejected.index
+rejected.model
 rejected.mapping
 rejected.validation_error
-rejected.model
-rejected.metadata
+rejected.adaptation_error
+rejected.raw_row
 ```
 
 ## Statistics
 
-Statistics should include:
+`QueryStatistics` fields:
 
--   rows_read
--   rows_valid
--   rows_rejected
--   execution_time
--   validation_time
+-   `rows_read`
+-   `rows_validated` (rows that reached Pydantic validation)
+-   `rows_accepted`
+-   `rows_rejected`
+-   `execution_time_ns`
+-   `adaptation_time_ns`
+-   `validation_time_ns`
+-   `rejection_time_ns`
 
 ## Async API (Planned — 0.4.0)
 
@@ -143,7 +171,7 @@ async for model in rowguard.astream(...):
 ## Design Guidelines
 
 -   Return immutable result objects where practical.
--   Never silently discard invalid rows.
+-   Never silently discard invalid rows without counting them.
 -   Keep function names short and predictable.
 -   Prefer explicit configuration over implicit behavior.
 -   Build on SQLAlchemy and SQLRules rather than replacing them.

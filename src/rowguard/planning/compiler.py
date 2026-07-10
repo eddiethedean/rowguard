@@ -48,6 +48,20 @@ class QueryPlanner(Generic[T]):
         pushdown_source = request.source
 
         if request.use_sqlrules and pushdown_source is not None:
+            if request.statement is not None:
+                diagnostics.append(
+                    Diagnostic(
+                        code="sqlrules.pushdown_source_explicit",
+                        severity="info",
+                        execution_id=execution_id,
+                        metadata={
+                            "reason": (
+                                "pushdown compiled against explicit source= "
+                                "and applied to the provided statement"
+                            )
+                        },
+                    )
+                )
             compiled = self._rules_bridge.compile(
                 model=request.model,
                 source=pushdown_source,

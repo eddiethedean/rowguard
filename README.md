@@ -48,16 +48,30 @@ users = Table(
 engine = create_engine("sqlite+pysqlite:///:memory:")
 metadata.create_all(engine)
 
+with engine.begin() as connection:
+    connection.execute(
+        users.insert(),
+        [
+            {"id": 1, "name": "Ada", "age": 37},
+            {"id": 2, "name": "Legacy", "age": 12},
+        ],
+    )
+
 with Session(engine) as session:
+    # Disable SQLRules pushdown so invalid rows reach Pydantic and appear in rejected.
     result = rowguard.select(
         session=session,
         table=users,
         model=UserRead,
         on_reject="collect",
+        use_sqlrules=False,
     )
     print(result.models)
     print(result.rejected)
 ```
+
+With `use_sqlrules=True` (the default), supported constraints such as `age >= 18`
+are pushed into SQL, so invalid candidate rows may never be returned.
 
 ## Public API (0.1.0)
 

@@ -23,6 +23,7 @@ class ProcessedRow(Generic[T]):
     adaptation_time_ns: int = 0
     validation_time_ns: int = 0
     rejection_time_ns: int = 0
+    validated: bool = False
 
 
 def process_row(
@@ -35,11 +36,11 @@ def process_row(
     adaptation_time_ns = 0
     validation_time_ns = 0
 
+    started = perf_counter_ns()
     try:
-        started = perf_counter_ns()
         adapted = plan.adapter.adapt(row)
-        adaptation_time_ns = perf_counter_ns() - started
     except RowAdaptationError as error:
+        adaptation_time_ns = perf_counter_ns() - started
         rejected = RejectedRow(
             index=index,
             model=plan.model,
@@ -48,7 +49,13 @@ def process_row(
             adaptation_error=error,
             raw_row=row,
         )
-        return _handle_rejection(plan, rejected, adaptation_time_ns=adaptation_time_ns)
+        return _handle_rejection(
+            plan,
+            rejected,
+            adaptation_time_ns=adaptation_time_ns,
+            validated=False,
+        )
+    adaptation_time_ns = perf_counter_ns() - started
 
     started = perf_counter_ns()
     outcome = plan.validator.validate(adapted.mapping)
@@ -63,6 +70,7 @@ def process_row(
             continue_processing=True,
             adaptation_time_ns=adaptation_time_ns,
             validation_time_ns=validation_time_ns,
+            validated=True,
         )
 
     rejected = RejectedRow(
@@ -77,6 +85,7 @@ def process_row(
         rejected,
         adaptation_time_ns=adaptation_time_ns,
         validation_time_ns=validation_time_ns,
+        validated=True,
     )
 
 
@@ -86,6 +95,7 @@ def _handle_rejection(
     *,
     adaptation_time_ns: int = 0,
     validation_time_ns: int = 0,
+    validated: bool = False,
 ) -> ProcessedRow[T]:
     started = perf_counter_ns()
     decision: RejectionDecision = plan.rejection_policy.handle(rejected)
@@ -98,4 +108,5 @@ def _handle_rejection(
         adaptation_time_ns=adaptation_time_ns,
         validation_time_ns=validation_time_ns,
         rejection_time_ns=rejection_time_ns,
+        validated=validated,
     )

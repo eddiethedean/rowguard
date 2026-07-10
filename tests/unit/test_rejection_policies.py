@@ -52,8 +52,10 @@ def test_raise_adaptation_error() -> None:
         validation_error=None,
         adaptation_error=RowAdaptationError("bad shape"),
     )
-    with pytest.raises(RowAdaptationError, match="bad shape"):
+    with pytest.raises(RowAdaptationError, match="bad shape") as exc_info:
         RaisePolicy().handle(rejected)
+    assert exc_info.value.row_index == 1
+    assert exc_info.value.model is UserRead
 
 
 def test_raise_requires_error() -> None:

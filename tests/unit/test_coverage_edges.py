@@ -47,22 +47,47 @@ def test_process_row_adaptation_failure_raise() -> None:
         rejection_policy=RaisePolicy(),
         use_sqlrules=False,
     )
-    with pytest.raises(RowAdaptationError):
-        process_row(row=object(), index=0, plan=plan)
+    with pytest.raises(RowAdaptationError) as exc_info:
+        process_row(row=object(), index=3, plan=plan)
+    assert exc_info.value.row_index == 3
+    assert exc_info.value.model is UserRead
 
 
 def test_raise_policy_wraps_non_adaptation_error() -> None:
     from rowguard.results.rejected_row import RejectedRow
 
     rejected = RejectedRow(
-        index=0,
+        index=4,
         model=UserRead,
         mapping=None,
         validation_error=None,
         adaptation_error=ValueError("boom"),
     )
-    with pytest.raises(RowAdaptationError, match="boom"):
+    with pytest.raises(RowAdaptationError, match="boom") as exc_info:
         RaisePolicy().handle(rejected)
+    assert exc_info.value.row_index == 4
+    assert exc_info.value.model is UserRead
+
+
+def test_parameters_forwarded_nonempty(session, users_table) -> None:
+    from sqlalchemy import bindparam
+
+    class FullUser(BaseModel):
+        id: int
+        name: str
+        age: int
+
+    stmt = select(users_table).where(users_table.c.id == bindparam("uid"))
+    result = rowguard.execute(
+        session=session,
+        statement=stmt,
+        model=FullUser,
+        on_reject="collect",
+        use_sqlrules=False,
+        parameters={"uid": 1},
+    )
+    assert result.valid_count == 1
+    assert result.models[0].id == 1
 
 
 def test_is_column_element() -> None:

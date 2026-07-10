@@ -111,12 +111,11 @@ Properties:
 
 A rejected row contains:
 
--   original row
--   adapted mapping
--   ValidationError
+-   row index
+-   adapted mapping (when adaptation succeeded)
+-   ValidationError and/or adaptation error
 -   model type
--   diagnostics
--   query metadata
+-   optional raw row
 
 Rejected rows are first-class objects.
 
@@ -124,11 +123,14 @@ Rejected rows are first-class objects.
 
 # Rejection Policies
 
-Supported policies:
+Supported in **0.1.0**:
 
 -   raise
 -   collect
 -   skip
+
+Planned for later releases:
+
 -   log
 -   callback
 -   quarantine
@@ -219,7 +221,8 @@ Async behavior should mirror synchronous behavior.
 Every QueryResult should expose metrics:
 
 -   rows_read
--   rows_valid
+-   rows_validated
+-   rows_accepted
 -   rows_rejected
 -   validation_time
 -   execution_time
@@ -248,7 +251,8 @@ RowGuardError
 Examples:
 
 -   QueryExecutionError
--   ValidationFailure
+-   RowValidationError
+-   RowAdaptationError
 -   RejectHandlerError
 -   ConfigurationError
 

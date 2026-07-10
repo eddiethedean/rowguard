@@ -20,6 +20,17 @@ class QueryExecutionError(RowGuardError):
 class RowAdaptationError(RowGuardError):
     """A database row could not be adapted safely."""
 
+    def __init__(
+        self,
+        message: str,
+        *,
+        model: type[Any] | None = None,
+        row_index: int | None = None,
+    ) -> None:
+        self.model = model
+        self.row_index = row_index
+        super().__init__(message)
+
 
 class RowValidationError(RowGuardError):
     """A row failed Pydantic validation under the raise policy."""

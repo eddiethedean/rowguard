@@ -8,8 +8,8 @@ from typing import Any, Generic, TypeVar
 from pydantic import BaseModel
 
 from rowguard.diagnostics import Diagnostic
-from rowguard.errors import QueryExecutionError, ResultAssemblyError
-from rowguard.execution.processor import process_row
+from rowguard.errors import QueryExecutionError, ResultAssemblyError, RowGuardError
+from rowguard.execution.processor import ProcessedRow, process_row
 from rowguard.planning.execution_plan import ExecutionPlan
 from rowguard.results.query_result import QueryResult
 from rowguard.results.rejected_row import RejectedRow
@@ -56,33 +56,24 @@ class SyncExecutionEngine(Generic[T]):
         state = ExecutionState(plan=plan)
         state.diagnostics.extend(plan.diagnostics)
         started = perf_counter_ns()
+        result: Any | None = None
 
         try:
             result = self._execute_statement(plan)
-            rows = list(result)
+            for index, row in enumerate(result):
+                processed = process_row(row=row, index=index, plan=plan)
+                if not self._consume_processed(state, processed):
+                    break
+        except RowGuardError:
+            raise
         except Exception as exc:
             raise QueryExecutionError(f"Query execution failed: {exc}") from exc
         finally:
+            if result is not None:
+                close = getattr(result, "close", None)
+                if callable(close):
+                    close()
             state.statistics.execution_time_ns = perf_counter_ns() - started
-
-        for index, row in enumerate(rows):
-            state.statistics.rows_read += 1
-            processed = process_row(row=row, index=index, plan=plan)
-            state.statistics.adaptation_time_ns += processed.adaptation_time_ns
-            state.statistics.validation_time_ns += processed.validation_time_ns
-            state.statistics.rejection_time_ns += processed.rejection_time_ns
-            state.statistics.rows_validated += 1
-
-            if processed.model is not None:
-                state.statistics.rows_accepted += 1
-                state.accepted.append(processed.model)
-                continue
-
-            state.statistics.rows_rejected += 1
-            if processed.retain_rejection and processed.rejected is not None:
-                state.rejected.append(processed.rejected)
-            if not processed.continue_processing:
-                break
 
         return self._assemble(state)
 
@@ -96,27 +87,38 @@ class SyncExecutionEngine(Generic[T]):
         state.diagnostics.extend(plan.diagnostics)
         started = perf_counter_ns()
 
-        for index, row in enumerate(rows):
-            state.statistics.rows_read += 1
-            processed = process_row(row=row, index=index, plan=plan)
-            state.statistics.adaptation_time_ns += processed.adaptation_time_ns
-            state.statistics.validation_time_ns += processed.validation_time_ns
-            state.statistics.rejection_time_ns += processed.rejection_time_ns
+        try:
+            for index, row in enumerate(rows):
+                processed = process_row(row=row, index=index, plan=plan)
+                if not self._consume_processed(state, processed):
+                    break
+        finally:
+            state.statistics.execution_time_ns = perf_counter_ns() - started
+
+        return self._assemble(state)
+
+    def _consume_processed(
+        self,
+        state: ExecutionState[T],
+        processed: ProcessedRow[T],
+    ) -> bool:
+        """Update state from a processed row. Returns whether to continue."""
+        state.statistics.rows_read += 1
+        state.statistics.adaptation_time_ns += processed.adaptation_time_ns
+        state.statistics.validation_time_ns += processed.validation_time_ns
+        state.statistics.rejection_time_ns += processed.rejection_time_ns
+        if processed.validated:
             state.statistics.rows_validated += 1
 
-            if processed.model is not None:
-                state.statistics.rows_accepted += 1
-                state.accepted.append(processed.model)
-                continue
+        if processed.model is not None:
+            state.statistics.rows_accepted += 1
+            state.accepted.append(processed.model)
+            return True
 
-            state.statistics.rows_rejected += 1
-            if processed.retain_rejection and processed.rejected is not None:
-                state.rejected.append(processed.rejected)
-            if not processed.continue_processing:
-                break
-
-        state.statistics.execution_time_ns = perf_counter_ns() - started
-        return self._assemble(state)
+        state.statistics.rows_rejected += 1
+        if processed.retain_rejection and processed.rejected is not None:
+            state.rejected.append(processed.rejected)
+        return processed.continue_processing
 
     def _execute_statement(self, plan: ExecutionPlan[T]) -> Any:
         params = dict(plan.parameters) if plan.parameters else {}
@@ -136,8 +138,10 @@ class SyncExecutionEngine(Generic[T]):
             raise ResultAssemblyError("Accepted count does not match models")
         if stats.rows_rejected < len(state.rejected):
             raise ResultAssemblyError("Rejected count is less than retained rejections")
-        if stats.rows_accepted + stats.rows_rejected != stats.rows_validated:
-            raise ResultAssemblyError("Validated rows are not fully classified")
+        if stats.rows_accepted + stats.rows_rejected != stats.rows_read:
+            raise ResultAssemblyError("Read rows are not fully classified")
+        if stats.rows_validated > stats.rows_read:
+            raise ResultAssemblyError("Validated count exceeds rows read")
 
         return QueryResult(
             models=tuple(state.accepted),
