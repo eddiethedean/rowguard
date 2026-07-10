@@ -36,3 +36,6 @@ htmlcov/
 .vscode/
 *.swp
 *~
+
+# Documentation builds
+docs/_build/

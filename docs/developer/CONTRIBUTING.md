@@ -97,6 +97,15 @@ python -m pip install -e ".[dev,postgresql,async,sqlmodel]"
 
 Exact extras should follow the repository's `pyproject.toml`.
 
+To build documentation locally (Sphinx / Read the Docs):
+
+```bash
+python -m pip install -e ".[docs]"
+make docs
+```
+
+See `docs/README.md` for Read the Docs project import steps.
+
 ---
 
 # Supported Tooling

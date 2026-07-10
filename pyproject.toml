@@ -48,12 +48,17 @@ dev = [
   "pre-commit>=3.7",
   "hypothesis>=6.100",
 ]
+docs = [
+  "sphinx>=7.2,<9",
+  "myst-parser>=3.0,<5",
+  "sphinx-rtd-theme>=2.0,<4",
+]
 postgresql = ["psycopg[binary]>=3.1"]
 async = ["aiosqlite>=0.20", "greenlet>=3.0"]
 
 [project.urls]
 Homepage = "https://github.com/eddiethedean/rowguard"
-Documentation = "https://github.com/eddiethedean/rowguard#readme"
+Documentation = "https://rowguard.readthedocs.io"
 Repository = "https://github.com/eddiethedean/rowguard"
 Changelog = "https://github.com/eddiethedean/rowguard/blob/main/CHANGELOG.md"
 Issues = "https://github.com/eddiethedean/rowguard/issues"

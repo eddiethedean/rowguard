@@ -2,6 +2,8 @@
 
 Validation-first database queries for SQLAlchemy and Pydantic.
 
+[![Documentation Status](https://readthedocs.org/projects/rowguard/badge/?version=latest)](https://rowguard.readthedocs.io/en/latest/?badge=latest)
+
 RowGuard executes SQLAlchemy queries, validates every returned row against a
 Pydantic model, and explicitly handles rows that fail validation.
 
@@ -135,11 +137,20 @@ Pydantic Validation
 
 ## Documentation
 
+- [Online docs](https://rowguard.readthedocs.io) — Read the Docs
 - [SPEC.md](SPEC.md) — product specification
 - [API.md](API.md) — public API
 - [ARCHITECTURE.md](ARCHITECTURE.md) — layered design
 - [ROADMAP.md](ROADMAP.md) — release plan
 - [docs/](docs/) — detailed design notes
+
+Build docs locally:
+
+```bash
+pip install -e ".[docs]"
+make docs
+# open docs/_build/html/index.html
+```
 
 ## Development
 

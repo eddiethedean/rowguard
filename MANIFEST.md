@@ -7,6 +7,7 @@ Included files for RowGuard **0.4.0**:
 - `.github/workflows/release.yml`
 - `.gitignore`
 - `.pre-commit-config.yaml`
+- `.readthedocs.yaml`
 - `API.md`
 - `ARCHITECTURE.md`
 - `CHANGELOG.md`
@@ -18,7 +19,8 @@ Included files for RowGuard **0.4.0**:
 - `SPEC.md`
 - `benchmarks/conftest.py`
 - `benchmarks/test_validation_benchmark.py`
-- `docs/` (architecture, developer, integrations, rejection, validation)
+- `docs/` (Sphinx + MyST: `conf.py`, `index.md`, `requirements.txt`, architecture,
+  developer, integrations, rejection, validation, reference)
 - `examples/basic.py`
 - `examples/streaming.py`
 - `examples/async_basic.py`
