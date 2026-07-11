@@ -17,7 +17,7 @@ python examples/sqlmodel_basic.py
 | --- | --- | --- |
 | `basic.py` | none | `use_sqlrules=False` so invalid rows appear in `rejected` |
 | `sqlrules_default.py` | none | Default `use_sqlrules=True`; invalid candidates filtered in SQL |
-| `streaming.py` | none | Sync `stream` with `on_reject="skip"` |
+| `streaming.py` | none | Sync `stream` with `on_reject="collect"` and `use_sqlrules=False` |
 | `async_basic.py` | `async` | `aselect` + `astream` |
 | `orm_projected.py` | none | Projected ORM `Select` with `source=User` |
 | `orm_entity.py` | none | Entity path with `table=User` on `select` |

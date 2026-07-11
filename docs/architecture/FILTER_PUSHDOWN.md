@@ -1,5 +1,13 @@
 # FILTER_PUSHDOWN.md
 
+:::{admonition} Design notes — current API is boolean
+:class: caution
+
+Public API uses `use_sqlrules=True|False` (see
+[SQLRules pushdown](../guides/sqlrules-pushdown.md)). Historical `strict` /
+`best_effort` mode sketches below are **not** separate public knobs in 0.5.0.
+:::
+
 # RowGuard Filter Pushdown
 
 ## Purpose

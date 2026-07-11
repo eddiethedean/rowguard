@@ -1,5 +1,13 @@
 # REJECTION_HANDLING.md
 
+:::{admonition} Design notes — not all policies are shipped
+:class: caution
+
+Shipped policies: `raise`, `collect`, `skip`. See
+[Rejection policies](../guides/rejection-policies.md). Callback, quarantine, and
+log handlers described below are **planned** (0.6+), not available in 0.5.0.
+:::
+
 # RowGuard Rejection Handling
 
 ## Purpose

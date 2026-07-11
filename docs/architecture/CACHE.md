@@ -1,5 +1,13 @@
 # CACHE.md
 
+:::{admonition} Design notes — plan cache is opt-in / internal
+:class: caution
+
+Public entrypoints do not enable a process-wide plan cache by default. This
+document is a maintainer design note. Plugin / quarantine cache sketches are
+**not shipped** in 0.5.0.
+:::
+
 # RowGuard Cache Architecture
 
 ## Purpose

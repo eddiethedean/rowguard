@@ -1,5 +1,12 @@
 # PERFORMANCE.md
 
+:::{admonition} Prefer the short user guide
+:class: tip
+
+Practical tips: [Performance guide](../guides/performance.md). This page is a
+long maintainer design note; plugin/quarantine sections are not shipped in 0.5.0.
+:::
+
 # RowGuard Performance Architecture
 
 ## Purpose

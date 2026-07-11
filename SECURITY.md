@@ -4,9 +4,14 @@
 
 | Version | Supported |
 | --- | --- |
-| 0.5.x | Yes |
-| 0.4.x | Best-effort only |
+| 0.5.x | Yes (security fixes on a best-effort basis) |
+| 0.4.x | Best-effort only (no committed fix timeline) |
 | < 0.4 | Best-effort only |
+
+**No SLA.** RowGuard is community-maintained under the MIT license. We aim to
+**acknowledge** vulnerability reports within a few business days. Fix timelines
+depend on severity and maintainer availability; there is no guaranteed patch
+window.
 
 ## Reporting a vulnerability
 
@@ -23,19 +28,23 @@ Include:
 - A minimal reproduction when possible
 - Impact assessment (data exposure, DoS, etc.)
 
-We aim to acknowledge reports within a few business days.
+## Adopter considerations
 
-## Scope notes
-
-RowGuard validates and classifies query rows. It does not replace:
+RowGuard validates and classifies query rows. It does **not** replace:
 
 - Database authentication / authorization
 - Network TLS configuration
 - Secrets management
 - Application-level access control
 
-SQLRules pushdown is an optimization, not an authorization boundary. Express
-tenant and access filters as explicit SQL / `where=` clauses.
+**Pushdown is not authz.** SQLRules pushdown is an optimization. Express tenant
+and access filters as explicit SQL / `where=` clauses—never rely on Pydantic
+constraints alone for isolation.
 
-Rejection payloads may contain row data. Treat `collect` / future quarantine
-sinks as sensitive and apply redaction policies appropriate to your environment.
+**Rejection payloads retain data.** Under `on_reject="collect"`, `RejectedRow`
+may hold `mapping`, `raw_row`, and validation details (including PII). Prefer
+`skip` or `raise` when you must not retain failed row content, or redact before
+logging / persisting results. Future quarantine sinks will need the same care.
+
+**Trusted inputs.** Treat `compiled_rules=`, `where=`, and caller-built
+`statement=` objects as trusted application code—not untrusted user input.

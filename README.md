@@ -6,19 +6,20 @@
 [![Python Versions](https://img.shields.io/pypi/pyversions/rowguard.svg)](https://pypi.org/project/rowguard/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-RowGuard makes every SQLAlchemy query return **validated Pydantic models**—or
-**explicit rejected rows**. Rows that reach validation are never silently
-discarded: they become accepted models or counted rejections.
+RowGuard turns SQLAlchemy query results into **validated Pydantic models**.
 
-**SQLRules** (a required dependency) can push supported Pydantic constraints into
-SQL. With the default `use_sqlrules=True`, invalid candidates may never leave the
-database—so `rejected` can be empty even though bad rows exist in the table. That
-is pushdown filtering, not silent drop-after-fetch. Use `use_sqlrules=False` when
-you need every fetched row classified by Pydantic.
+By default, **[SQLRules](https://pypi.org/project/sqlrules/)** (a required
+dependency) pushes supported model constraints into SQL so invalid candidates
+are filtered before fetch. Every row that *is* fetched is either an accepted
+model or an explicit rejection—never ignored after fetch.
+
+Need to inspect invalid rows in Python? Pass `use_sqlrules=False` and
+`on_reject="collect"`.
 
 Use it when you already have SQLAlchemy Core tables/selects or ORM / SQLModel
 mapped classes and need typed reads with deterministic rejection handling. It is
-**not** an ORM and does not replace SQLAlchemy, Pydantic, or SQLModel.
+**not** an ORM and does not replace SQLAlchemy, Pydantic, or SQLModel—it
+validates **reads** over those stacks.
 
 ## Status
 
@@ -45,24 +46,17 @@ pip install "rowguard[postgresql]"   # psycopg driver helper
 | `dev` | Contributors: pytest, ruff, mypy, … |
 | `docs` | Sphinx documentation build |
 
-Requires Python 3.10+, Pydantic v2, SQLAlchemy 2.x, and SQLRules ≥1.0. See the
+Requires Python 3.10+, Pydantic v2, SQLAlchemy 2.x, and SQLRules ≥1.0
+(3.10–3.12 tested in CI; 3.13 untested). See the
 [installation guide](https://rowguard.readthedocs.io/en/latest/guides/installation.html).
 
 ## Quickstart
 
 Full walkthrough: [Quickstart](https://rowguard.readthedocs.io/en/latest/guides/quickstart.html).
 
-**Default path** (SQLRules on): invalid rows are filtered in SQL; `rejected` is empty.
+### 1. Default path (library defaults)
 
-```python
-result = rowguard.select(session=session, table=users, model=UserRead)
-# result.models → only rows that satisfied pushdown + Pydantic
-# result.rejected → () when pushdown removed invalid candidates
-```
-
-**Explicit rejection path** (`use_sqlrules=False`): every fetched row is validated;
-invalid rows appear in `rejected` under `on_reject="collect"` (default policy is
-`"raise"`).
+Invalid candidates are filtered in SQL. `rejected` is empty.
 
 ```python
 from typing import Annotated
@@ -102,14 +96,23 @@ with engine.begin() as connection:
     )
 
 with Session(engine) as session:
+    result = rowguard.select(session=session, table=users, model=UserRead)
+    print(result.models)    # (UserRead(id=1, name='Ada', age=37),)
+    print(result.rejected)  # ()
+```
+
+### 2. Inspect rejections in Python
+
+```python
+with Session(engine) as session:
     result = rowguard.select(
         session=session,
         table=users,
         model=UserRead,
-        on_reject="collect",
-        use_sqlrules=False,
+        on_reject="collect",      # default is "raise"
+        use_sqlrules=False,       # default is True
     )
-    print(result.models)    # (UserRead(id=1, name='Ada', age=37),)
+    print(result.models)    # Ada
     print(result.rejected)  # Legacy failed age >= 18
 ```
 
@@ -118,112 +121,46 @@ and the [FAQ](https://rowguard.readthedocs.io/en/latest/guides/faq.html).
 
 ## Public API (0.5.0)
 
-Full reference: [API guide](https://rowguard.readthedocs.io/en/latest/api.html) ·
-[Python autodoc](https://rowguard.readthedocs.io/en/latest/reference/api.html) ·
-[Error catalog](https://rowguard.readthedocs.io/en/latest/reference/errors.html).
-
 | Function | Purpose |
 | --- | --- |
-| `select(...)` | Build and execute a table / mapped-class query with validation |
-| `execute(...)` | Validate rows from an existing `Select` |
-| `validate_rows(...)` | Validate mappings without SQL |
-| `compile_plan(...)` | Compile an `ExecutionPlan` without executing |
-| `stream(...)` | Stream validated models without buffering accepted rows |
-| `aselect(...)` | Async `select` for `AsyncSession` / `AsyncConnection` |
-| `aexecute(...)` | Async `execute` for `AsyncSession` / `AsyncConnection` |
-| `astream(...)` | Async stream (`AsyncStreamResult`) without buffering accepted rows |
+| `select` / `execute` | Buffered validated reads |
+| `stream` | Stream accepted models (no accepted-row buffer) |
+| `aselect` / `aexecute` / `astream` | Async counterparts |
+| `validate_rows` | Validate mappings without SQL |
+| `compile_plan` | Inspect an `ExecutionPlan` without executing |
 
-**`table=` vs `source=`:** pass a Core `Table` or ORM/SQLModel mapped class as
-`table=` on `select` / `stream` / `aselect` / `astream`. On `execute` /
-`aexecute` with a projected `Select`, pass the same mapped class as `source=`
-for pushdown and adaptation. Use only one of `table=` or `source=` per call.
+Rejection policies: `raise` (default), `collect`, `skip`.
 
-Rejection policies: `raise` (default), `collect`, `skip` — see
-[rejection policies](https://rowguard.readthedocs.io/en/latest/guides/rejection-policies.html).
+**`table=` vs `source=`:** use `table=` on `select`/`stream` (Core `Table` or
+mapped class). On `execute` with a projected `Select`, pass the mapped class as
+`source=`. Full parameter contracts:
+[API guide](https://rowguard.readthedocs.io/en/latest/api.html) ·
+[Python autodoc](https://rowguard.readthedocs.io/en/latest/reference/api.html) ·
+[Errors](https://rowguard.readthedocs.io/en/latest/reference/errors.html).
 
-Optional planning knobs: `compiled_rules=` (precompiled SQLRules), `strict=`
-(Pydantic), `field_map=` / `column_map=` / `attribute_map=`,
-`orm_validation=` / `unloaded_attributes=` (ORM entity path).
-
-Streaming knobs: `yield_per=`, `observers=` (`StreamObserver` / `BaseStreamObserver`).
-Observers remain sync callables. See the
-[streaming guide](https://rowguard.readthedocs.io/en/latest/guides/streaming.html).
-
-ORM / SQLModel: prefer projections; see
-[ORM and SQLModel](https://rowguard.readthedocs.io/en/latest/guides/orm-sqlmodel.html).
-Install SQLModel support with `pip install "rowguard[sqlmodel]"`.
-
-Async note: only DB I/O is awaited. Pydantic validation runs on the event loop;
-heavy models can block. Prefer `async with rowguard.astream(...)` for cleanup.
-Install async extras with `pip install "rowguard[async]"`. Details:
-[async guide](https://rowguard.readthedocs.io/en/latest/guides/async.html).
-
-## Architecture
-
-```text
-Pydantic Model
-      │
-      ▼
-SQLRules
-      │
-      ▼
-SQLAlchemy Query
-      │
-      ▼
-Database
-      │
-      ▼
-Row Adapter
-      │
-      ▼
-Pydantic Validation
-      │
-      ├── Accepted Model
-      └── Rejected Row
-```
-
-More detail:
-[architecture overview](https://rowguard.readthedocs.io/en/latest/architecture_overview.html)
-· [design philosophy](https://rowguard.readthedocs.io/en/latest/guides/design-philosophy.html)
-· [specification](https://rowguard.readthedocs.io/en/latest/spec.html).
+ORM / SQLModel guide · Streaming · Async ·
+[Performance](https://rowguard.readthedocs.io/en/latest/guides/performance.html) ·
+[Upgrading](https://rowguard.readthedocs.io/en/latest/guides/upgrading.html).
 
 ## Documentation
 
+Start here → [Installation](https://rowguard.readthedocs.io/en/latest/guides/installation.html)
+→ [Quickstart](https://rowguard.readthedocs.io/en/latest/guides/quickstart.html).
+
 - [Docs home](https://rowguard.readthedocs.io/en/latest/)
-- [Start here](https://rowguard.readthedocs.io/en/latest/guides/start-here.html)
-- [Quickstart](https://rowguard.readthedocs.io/en/latest/guides/quickstart.html)
 - [Supported vs planned](https://rowguard.readthedocs.io/en/latest/project/supported.html)
 - [Examples](https://rowguard.readthedocs.io/en/latest/examples/index.html)
-- [API guide](https://rowguard.readthedocs.io/en/latest/api.html)
-- [Python autodoc](https://rowguard.readthedocs.io/en/latest/reference/api.html)
 - [Changelog](https://rowguard.readthedocs.io/en/latest/project/changelog.html)
-- [Roadmap](https://rowguard.readthedocs.io/en/latest/project/roadmap.html)
-
-Build docs locally:
-
-```bash
-pip install -e ".[docs]"
-make docs
-# open docs/_build/html/index.html
-```
 
 ## Development
 
-See [Contributing](CONTRIBUTING.md) (also on
-[Read the Docs](https://rowguard.readthedocs.io/en/latest/developer/CONTRIBUTING.html)),
-[Security](SECURITY.md), and
-[Releasing](https://rowguard.readthedocs.io/en/latest/project/releasing.html).
+See [Contributing](CONTRIBUTING.md) and [Security](SECURITY.md).
 
 ```bash
-pip install -e ".[dev,async,sqlmodel]"
-make all          # ruff + mypy + pytest --cov
-python examples/basic.py
-python examples/streaming.py
-python examples/async_basic.py
-python examples/orm_projected.py
-python examples/orm_entity.py
-python examples/sqlmodel_basic.py
+make install      # .[dev,async,sqlmodel] — matches CI
+make all
 python examples/sqlrules_default.py
+python examples/basic.py
 ```
 
 ## License

@@ -1,5 +1,14 @@
 # CONTRIBUTING.md
 
+:::{admonition} Shipped surface first
+:class: tip
+
+Contribute against **0.5 shipped APIs** (Core, async, streaming, ORM/SQLModel).
+Plugin, callback, quarantine, reflection, and raw-SQL helper work is deferred—
+see [Supported vs planned](../project/supported.md). Prefer `make install` /
+`make all` (matches CI).
+:::
+
 # Contributing to RowGuard
 
 Thank you for helping build RowGuard.
@@ -451,8 +460,9 @@ Streaming changes must prove:
 - Resources close on all exits
 - Ordering remains stable
 - Rejections behave consistently
-- Quarantine batches flush
-- Memory remains bounded
+- Memory remains bounded for the chosen policy (`collect` retains rejects)
+
+(Quarantine batch flush is a **0.6+** concern, not required for 0.5 PRs.)
 
 ---
 
@@ -472,6 +482,13 @@ Do not merge optimizations that weaken guarantees.
 ---
 
 # Plugin Contributions
+
+:::{admonition} Deferred to 0.7
+:class: caution
+
+There is no public plugin API in 0.5. Do not open PRs that invent plugin
+registries unless an issue explicitly scopes that milestone.
+:::
 
 Public plugins should:
 

@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.5.0] — 2026-07-10
 
+### Upgrade notes
+
+- Require `sqlrules>=1.0.0,<2` (uninstall older majors).
+- New ORM / SQLModel read paths; see [Upgrading](docs/guides/upgrading.md).
+
 ### Added
 
 - SQLAlchemy ORM mapped classes as `table=` / `source=` with SQLRules pushdown

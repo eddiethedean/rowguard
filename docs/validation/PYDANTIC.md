@@ -1,5 +1,13 @@
 # PYDANTIC.md
 
+:::{admonition} Design notes
+:class: caution
+
+Day-to-day validation behavior is covered in the [API guide](../api.md) and
+[rejection policies](../guides/rejection-policies.md). Callback/quarantine
+mentions below are **not shipped** in 0.5.0.
+:::
+
 # RowGuard Pydantic Integration
 
 ## Purpose

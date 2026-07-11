@@ -1,27 +1,12 @@
 # Quickstart
 
-Validate every row from a SQLAlchemy Core table against a Pydantic model.
+Validate SQLAlchemy query rows against a Pydantic model.
 
-:::{admonition} Defaults vs this walkthrough
-:class: tip
+## 1. Default path (recommended first run)
 
-**Default** `use_sqlrules=True` pushes supported constraints into SQL. Invalid
-candidates may never be fetched, so `rejected` can be empty. That is pushdown
-filtering—not silent drop-after-fetch. See [SQLRules pushdown](sqlrules-pushdown.md).
-
-This walkthrough uses `use_sqlrules=False` so every fetched row is classified by
-Pydantic and invalid rows appear in `rejected` under `on_reject="collect"`
-(the API default policy is `"raise"`).
-:::
-
-## Default path (SQLRules on)
-
-```python
-result = rowguard.select(session=session, table=users, model=UserRead)
-# Only rows that passed pushdown + Pydantic. rejected is often ().
-```
-
-## Explicit rejection path
+Library defaults: `use_sqlrules=True`, `on_reject="raise"`. Supported constraints
+(such as `Field(ge=18)`) are pushed into SQL, so invalid candidates are often
+never fetched.
 
 ```python
 from typing import Annotated
@@ -61,6 +46,18 @@ with engine.begin() as connection:
     )
 
 with Session(engine) as session:
+    result = rowguard.select(session=session, table=users, model=UserRead)
+    print(result.models)    # Ada only
+    print(result.rejected)  # ()
+    print(result.statistics.rows_read)  # 1
+```
+
+## 2. Inspect rejections in Python
+
+Turn pushdown off and use `collect` so every fetched row is classified:
+
+```python
+with Session(engine) as session:
     result = rowguard.select(
         session=session,
         table=users,
@@ -84,15 +81,16 @@ with Session(engine) as session:
 
 ## What happened
 
-1. RowGuard planned a `SELECT` from `users`.
-2. With `use_sqlrules=False`, both rows were fetched.
-3. Ada validated; Legacy failed `age >= 18`.
-4. Under `collect`, both outcomes are retained on `QueryResult`.
-5. The stream yields accepted models only (`skip` does not retain rejections).
+1. **Default path:** SQLRules pushed `age >= 18` into SQL; Legacy never left the DB.
+2. **Inspect path:** both rows were fetched; Ada validated; Legacy became a
+   `RejectedRow` under `collect`.
+3. Stream with `skip` yields accepted models only (rejections counted, not retained).
 
-## Async (complete example)
+See [SQLRules pushdown](sqlrules-pushdown.md) for the capability matrix.
 
-Requires `pip install "rowguard[async]"`.
+## Async
+
+Requires `pip install "rowguard[async]"`. Same default-vs-inspect pattern:
 
 ```python
 import asyncio
@@ -138,31 +136,27 @@ async def main() -> None:
             session=session,
             table=users,
             model=UserRead,
-            on_reject="collect",
-            use_sqlrules=False,
         )
         print(result.models)
 
-        async with rowguard.astream(
+        inspected = await rowguard.aselect(
             session=session,
             table=users,
             model=UserRead,
-            on_reject="skip",
+            on_reject="collect",
             use_sqlrules=False,
-        ) as stream:
-            async for model in stream:
-                print(model)
+        )
+        print(inspected.rejected)
 
     await engine.dispose()
 
 
-if __name__ == "__main__":
-    asyncio.run(main())
+asyncio.run(main())
 ```
 
 ## Next
 
 - [SQLRules pushdown](sqlrules-pushdown.md)
 - [Rejection policies](rejection-policies.md)
-- [Examples gallery](../examples/index.md)
-- [Public API](../api.md)
+- [ORM and SQLModel](orm-sqlmodel.md)
+- [Examples](../examples/index.md)

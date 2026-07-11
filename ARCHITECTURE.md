@@ -126,18 +126,19 @@ Validation remains entirely delegated to Pydantic.
 
 ------------------------------------------------------------------------
 
-## Layer 6 -- Rejection Handling
+## Layer 6 -- Rejection Handling (shipped)
 
-Responsibilities:
+Shipped policies:
 
--   Raise
--   Collect
--   Skip
--   Log
--   Callback
--   Quarantine
+-   `raise` — stop on first rejection (default)
+-   `collect` — retain `RejectedRow` values
+-   `skip` — count rejections but do not retain them
 
-Every rejected row follows the configured policy.
+Callback, quarantine, and log policies are **not shipped** in 0.5. See
+[Supported vs planned](docs/project/supported.md).
+
+Every row that reaches validation follows the configured policy. Default
+SQLRules pushdown may filter invalid candidates in SQL before fetch.
 
 ------------------------------------------------------------------------
 
@@ -245,10 +246,11 @@ Future plugins may provide:
 
 Architecture intentionally excludes:
 
--   ORM mapping
+-   Owning ORM persistence / relationship graphs (0.5 **does** validate ORM and
+    SQLModel **reads**)
 -   migrations
 -   SQL parsing
--   schema reflection logic
+-   schema reflection helpers (planned later)
 -   database drivers
 
 ------------------------------------------------------------------------

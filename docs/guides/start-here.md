@@ -1,54 +1,50 @@
 # Start here
 
-RowGuard is a validation-first query layer for SQLAlchemy and Pydantic.
+RowGuard turns SQLAlchemy query results into validated Pydantic models.
 
-Every row returned from a query is classified as either:
+**Day-1 path:** [Install](installation.md) → [Quickstart](quickstart.md)
+→ skim [SQLRules pushdown](sqlrules-pushdown.md).
 
-1. An accepted Pydantic model, or
-2. A rejected row with structured diagnostics
-
-Nothing that reaches validation is silently dropped. (Default SQLRules pushdown
-may filter invalid candidates in SQL before fetch—see
-[SQLRules pushdown](sqlrules-pushdown.md).)
+By default, SQLRules pushes supported constraints into SQL. Every row that
+*reaches* validation is accepted or explicitly rejected—never ignored after
+fetch. Use `use_sqlrules=False` when you need invalid rows classified in Python.
 
 ## Choose a path
 
 | You want to… | Go to |
 | --- | --- |
 | Install and run a first query | [Installation](installation.md) → [Quickstart](quickstart.md) |
-| Understand why rejected rows “disappear” | [SQLRules pushdown](sqlrules-pushdown.md) |
-| Understand rejection policies | [Rejection policies](rejection-policies.md) |
-| Stream large result sets | [Streaming guide](streaming.md) |
-| Use AsyncSession | [Async guide](async.md) |
-| See what is shipped vs planned | [Supported vs planned](../project/supported.md) |
-| Look up function signatures | [API guide](../api.md) · [Python autodoc](../reference/api.md) |
-| Understand internals | [Architecture overview](../architecture_overview.md) |
+| Understand why `rejected` can be empty | [SQLRules pushdown](sqlrules-pushdown.md) |
+| Upgrade from 0.4 | [Upgrading](upgrading.md) |
+| Rejection policies | [Rejection policies](rejection-policies.md) |
+| Stream large results | [Streaming](streaming.md) |
+| AsyncSession | [Async](async.md) |
+| Performance tips | [Performance](performance.md) |
+| What is shipped vs planned | [Supported vs planned](../project/supported.md) |
+| API contracts | [API guide](../api.md) · [Errors](../reference/errors.md) |
 
 ## What RowGuard is
 
-- A thin orchestration layer over SQLAlchemy + SQLRules + Pydantic
-- Sync and async Core APIs (`select` / `stream` / `aselect` / `astream`)
-- Explicit rejection handling (`raise`, `collect`, `skip`)
+- Orchestration over SQLAlchemy + SQLRules + Pydantic
+- Sync and async buffered and streaming APIs
+- Policies: `raise` (default), `collect`, `skip`
 
 ## What RowGuard is not
 
-- Not an ORM (ORM / SQLModel reads are supported in **0.5.0**; RowGuard still
-  does not own mapping or persistence)
+- Not an ORM / persistence layer (it **validates ORM and SQLModel reads** in 0.5)
 - Not a migration tool
 - Not a replacement for SQLAlchemy or Pydantic
-- Not a silent “best effort” validator
+- Not an authorization system (pushdown is not a security boundary)
 
 ## Requirements
 
-- Python {{ python_min }}
-- Pydantic v2
-- SQLAlchemy 2.x
-- SQLRules ≥ 1.0
+- Python {{ python_min }} (3.10–3.12 tested in CI; 3.13 untested)
+- Pydantic v2, SQLAlchemy 2.x, SQLRules ≥ 1.0
 
-Optional: `pip install "rowguard[async]"` for `sqlite+aiosqlite` and async APIs.
+Optional: `pip install "rowguard[async]"` / `"rowguard[sqlmodel]"`.
 
 ## Next
 
 1. [Install](installation.md)
-2. [Quickstart](quickstart.md)
-3. Skim [SQLRules pushdown](sqlrules-pushdown.md) and the [FAQ](faq.md)
+2. [Quickstart](quickstart.md) — default path first, then inspect rejections
+3. [FAQ](faq.md) / [Troubleshooting](troubleshooting.md)

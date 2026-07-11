@@ -7,10 +7,12 @@
 
 **Current 0.5 CI focus:** SQLAlchemy Core + ORM/SQLModel, sync + async
 (sqlite / aiosqlite), buffered + streaming, rejection policies
-`raise` / `collect` / `skip`.
+`raise` / `collect` / `skip`. Run `make install` then `make all`.
 
-Callback and quarantine coverage are **target** layers for later
-milestones. See [Supported vs planned](../project/supported.md).
+Sections below that mention **callback**, **quarantine**, **raw SQL**,
+**reflection**, or **plugin conformance** are **target** layers for later
+milestones—not required for 0.5 PRs. See
+[Supported vs planned](../project/supported.md).
 :::
 
 ## Purpose

@@ -1,5 +1,12 @@
 # VALIDATION_ERRORS.md
 
+:::{admonition} Design notes
+:class: caution
+
+See the [error catalog](../reference/errors.md) for shipped exceptions.
+Callback/quarantine error flows below are **not shipped** in 0.5.0.
+:::
+
 # RowGuard Validation Errors
 
 ## Purpose

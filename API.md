@@ -68,17 +68,27 @@ Compile an immutable `ExecutionPlan` without executing against the database.
 
 ``` python
 plan = rowguard.compile_plan(
-    table=users,
+    table=users,              # or statement= / source=
     model=UserRead,
+    where=(),
+    field_map=None,
+    attribute_map=None,
+    column_map=None,
+    parameters=None,
+    on_reject="raise",
     use_sqlrules=True,
     compiled_rules=None,
+    strict=None,
+    orm_validation="mapping",
+    unloaded_attributes="error",
 )
 ```
 
-Useful for inspection and tests. The plan holds staged sub-plans
-(`resolved_source`, `pushdown_plan`, `adapter_plan`, `validation_plan`,
-`rejection_plan`), the final `statement`, `parameters`, `execution_id`, and
-planning `diagnostics`. It does **not** hold a session or connection.
+Accepts the same planning knobs as `select` (including `statement=` /
+`source=` instead of or with `table=`). Useful for inspection and tests. The
+plan holds staged sub-plans, the final `statement`, `parameters`,
+`execution_id`, and planning `diagnostics`. It does **not** hold a session or
+connection.
 
 Internal plan field layout may change before 1.0.
 
@@ -131,18 +141,29 @@ Execute an existing SQLAlchemy statement instead of constructing one.
 
 ``` python
 result = rowguard.execute(
-    session=session,
+    session=session,          # or connection=
     statement=stmt,
     model=UserRead,
-    source=None,
+    source=None,              # mapped class / Table for pushdown + adaptation
+    where=(),
+    field_map=None,
+    attribute_map=None,
+    column_map=None,
+    parameters=None,
     on_reject="raise",
     use_sqlrules=True,
+    compiled_rules=None,
+    strict=None,
+    orm_validation="mapping",
+    unloaded_attributes="error",
 )
 ```
 
-Optional `source=` supplies the selectable used for SQLRules pushdown when
-`use_sqlrules=True`. When both `statement` and `source` are provided, RowGuard
-emits a `sqlrules.pushdown_source_explicit` diagnostic.
+Optional `source=` supplies the selectable used for SQLRules pushdown and
+adaptation when `use_sqlrules=True` or when adapting ORM projections. When both
+`statement` and `source` are provided, RowGuard emits a
+`sqlrules.pushdown_source_explicit` diagnostic. Pass exactly one of `session`
+or `connection`.
 
 ------------------------------------------------------------------------
 
@@ -156,10 +177,12 @@ result = rowguard.validate_rows(
     model=UserRead,
     field_map=None,
     on_reject="raise",
+    strict=None,
 )
 ```
 
-Useful for CSV readers, ETL pipelines, or custom data sources.
+Useful for CSV readers, ETL pipelines, or custom data sources. `strict=`
+forwards to Pydantic validation planning.
 
 ## QueryResult
 
@@ -221,6 +244,7 @@ rejected.mapping
 rejected.validation_error
 rejected.adaptation_error
 rejected.raw_row
+rejected.source_identity   # optional PK dict on ORM entity adaptation failures
 ```
 
 ## Statistics
@@ -235,6 +259,7 @@ rejected.raw_row
 -   `adaptation_time_ns`
 -   `validation_time_ns`
 -   `rejection_time_ns`
+-   `rejection_rate` (property: `rows_rejected / rows_read`, or `0.0` when empty)
 
 ## Async API (0.5.0)
 
@@ -285,13 +310,15 @@ callables. Async reject handlers (callback / quarantine) are not shipped in
 
 ## Errors
 
-Common public exceptions (see also the docs [error catalog](https://rowguard.readthedocs.io/en/latest/reference/errors.html)):
+Common public exceptions (see the [error catalog](https://rowguard.readthedocs.io/en/latest/reference/errors.html)):
 
 -   `ConfigurationError` — invalid call configuration
--   `PlanningError` — plan-time failure
+-   `PlanningError` — plan-time failure (`stage`, `execution_id`); subclass of `ConfigurationError`
 -   `QueryExecutionError` — execution / closed-stream failures
--   `RowValidationError` — raise-policy validation failure
--   `RowAdaptationError` — raise-policy adaptation failure
+-   `RowValidationError` — raise-policy validation failure (`model`, `validation_error`, `row_index`)
+-   `RowAdaptationError` — raise-policy adaptation failure (`model`, `row_index`)
+-   `ResultAssemblyError` — internal consistency failure (rare)
+-   `RejectHandlerError` — reserved for 0.6 callback/quarantine failures
 
 Default `use_sqlrules=True` may filter invalid candidates in SQL so they never
 appear in `rejected`. See the SQLRules pushdown guide on the docs site.

@@ -8,11 +8,10 @@
     <span class="rg-badge">Sync · Async · Streaming</span>
   </div>
   <p class="rg-hero-kicker">RowGuard documentation</p>
-  <p class="rg-hero-title">Validation-first queries with explicit accepted or rejected rows</p>
-  <p class="rg-lead">Execute SQLAlchemy queries, validate every returned row against a Pydantic model, and handle rejections explicitly—with the same semantics for buffered, streaming, sync, and async APIs. Default SQLRules pushdown may filter invalid candidates in SQL before fetch.</p>
+  <p class="rg-hero-title">Validated SQLAlchemy reads with Pydantic</p>
+  <p class="rg-lead">By default, SQLRules pushes supported constraints into SQL. Every fetched row becomes an accepted model or an explicit rejection—never ignored after fetch. Same semantics for buffered, streaming, sync, and async APIs.</p>
   <p>
     <a class="rg-hero-cta" href="guides/start-here.html">Start here →</a>
-    <a class="rg-hero-cta rg-hero-cta--ghost" href="guides/quickstart.html" style="margin-left:0.75rem">Quickstart</a>
   </p>
 </div>
 ```
@@ -22,14 +21,14 @@ Pick the path that matches how you work:
 ::::{grid} 2
 :gutter: 3
 
-:::{grid-item-card} Get productive
-:link: guides/quickstart
+:::{grid-item-card} Start here
+:link: guides/start-here
 :link-type: doc
 
-Install RowGuard and run your first validated `select` / `stream` in a few minutes.
+Install → Quickstart (default path first) → SQLRules pushdown.
 
 +++
-**Open quickstart →**
+**Begin →**
 :::
 
 :::{grid-item-card} SQLRules defaults
@@ -73,9 +72,10 @@ Keep your `Table` / `Select` and sessions. RowGuard adds planning, validation, a
 :::{admonition} Design docs
 :class: caution
 
-Long design notes are **hidden from the main sidebar** (still built and linked).
-Pages under **Future / design** describe planned work and are **not shipped** in
-{{ release }}. See [Supported vs planned](project/supported.md).
+Long design notes and **Future / design** pages are built but **hidden from the
+main sidebar**. Start from guides and
+[Supported vs planned](project/supported.md). Unshipped features are not
+available in {{ release }}.
 :::
 
 ```{raw} html
@@ -109,6 +109,8 @@ guides/rejection-policies
 guides/streaming
 guides/async
 guides/orm-sqlmodel
+guides/performance
+guides/upgrading
 guides/best-practices
 examples/index
 ```
@@ -163,6 +165,7 @@ rejection/DIAGNOSTICS
 ```{toctree}
 :maxdepth: 1
 :caption: Integrations (shipped)
+:hidden:
 
 integrations/CORE
 integrations/ORM
@@ -173,6 +176,7 @@ integrations/WHY_NOT_SQLMODEL
 ```{toctree}
 :maxdepth: 1
 :caption: Future / design (not shipped)
+:hidden:
 
 integrations/REFLECTION
 integrations/RAW_SQL

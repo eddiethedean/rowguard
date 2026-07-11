@@ -1,5 +1,13 @@
 # STREAMING.md
 
+:::{admonition} Design notes — read the user guide first
+:class: caution
+
+For day-to-day use see [Streaming guide](../guides/streaming.md). Sections below
+that describe callback / quarantine / log policies are **not shipped** in 0.5.0.
+Shipped policies: `raise`, `collect`, `skip`.
+:::
+
 # RowGuard Streaming
 
 ## Purpose

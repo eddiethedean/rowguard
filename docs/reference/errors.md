@@ -1,17 +1,52 @@
 # Error catalog
 
-Public exceptions raised by RowGuard {{ release }}. All inherit from `RowGuardError`
-unless noted.
+Public exceptions raised by RowGuard {{ release }}. Import from `rowguard`
+(for example `from rowguard import PlanningError`).
 
-| Exception | When it is raised |
-| --- | --- |
-| `ConfigurationError` | Invalid call shape (both/neither session & connection; both `table` & `statement` for stream; bad `yield_per`; etc.) |
-| `PlanningError` | Plan-time failures (missing source, invalid maps, pushdown config errors) |
-| `QueryExecutionError` | DB/driver failures wrapped during execute/stream; closed stream re-entry |
-| `RowValidationError` | A row failed Pydantic validation under `on_reject="raise"` |
-| `RowAdaptationError` | Row could not be adapted to a mapping under raise policy |
-| `RejectHandlerError` | Reserved for future callback/quarantine handler failures (0.6) |
-| `ResultAssemblyError` | Internal consistency failure assembling `QueryResult` (should be rare) |
+## Hierarchy
+
+```text
+RowGuardError
+├── ConfigurationError
+│   └── PlanningError          # also a ConfigurationError
+├── QueryExecutionError
+├── RowAdaptationError
+├── RowValidationError
+├── RejectHandlerError         # reserved for 0.6 callbacks/quarantine
+└── ResultAssemblyError        # internal consistency (rare)
+```
+
+Catching `ConfigurationError` also catches `PlanningError`.
+
+## Catalog
+
+| Exception | When | Notable attributes |
+| --- | --- | --- |
+| `ConfigurationError` | Invalid call shape (both/neither session & connection; both `table` & `statement`; bad `yield_per`; bad ORM knobs) | — |
+| `PlanningError` | Plan-time failures (missing source, invalid maps, pushdown errors) | `stage`, `execution_id` |
+| `QueryExecutionError` | DB/driver failures; closed stream re-entry | `__cause__` often set |
+| `RowValidationError` | Pydantic failure under `on_reject="raise"` | `model`, `validation_error`, `row_index` |
+| `RowAdaptationError` | Adaptation failure under raise (or wrapped) | `model`, `row_index` |
+| `RejectHandlerError` | Reserved for future callback/quarantine failures | — |
+| `ResultAssemblyError` | Inconsistent result about to be published (should be rare) | — |
+
+## Examples
+
+```python
+import rowguard
+from rowguard import PlanningError, RowValidationError
+
+try:
+    rowguard.select(session=session, table=users, model=UserRead)
+except RowValidationError as exc:
+    print(exc.row_index, exc.validation_error)
+except PlanningError as exc:
+    print(exc.stage, exc)
+```
+
+Under default `on_reject="raise"`, the first invalid **fetched** row raises
+`RowValidationError`. With default `use_sqlrules=True`, that row may never be
+fetched—see [SQLRules pushdown](../guides/sqlrules-pushdown.md).
 
 ## Stream lifecycle
 

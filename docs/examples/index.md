@@ -1,83 +1,60 @@
 # Examples
 
-Runnable scripts from the repository. See also
-[`examples/README.md`](https://github.com/eddiethedean/rowguard/blob/main/examples/README.md)
-for extras and `table=` vs `source=`.
+Runnable scripts (see also
+[`examples/README.md`](https://github.com/eddiethedean/rowguard/blob/main/examples/README.md)):
 
-- [examples/basic.py](https://github.com/eddiethedean/rowguard/blob/main/examples/basic.py) — buffered `select` with `collect` (`use_sqlrules=False`)
-- [examples/sqlrules_default.py](https://github.com/eddiethedean/rowguard/blob/main/examples/sqlrules_default.py) — default SQLRules pushdown (`use_sqlrules=True`)
-- [examples/streaming.py](https://github.com/eddiethedean/rowguard/blob/main/examples/streaming.py) — sync `stream`
-- [examples/async_basic.py](https://github.com/eddiethedean/rowguard/blob/main/examples/async_basic.py) — `aselect` + `astream` (needs `rowguard[async]`)
-- [examples/orm_projected.py](https://github.com/eddiethedean/rowguard/blob/main/examples/orm_projected.py) — ORM column projection (`source=User`)
-- [examples/orm_entity.py](https://github.com/eddiethedean/rowguard/blob/main/examples/orm_entity.py) — single-entity ORM select (`table=User`)
-- [examples/sqlmodel_basic.py](https://github.com/eddiethedean/rowguard/blob/main/examples/sqlmodel_basic.py) — SQLModel table source (needs `rowguard[sqlmodel]`)
-
-## Run locally
+| Script | Lesson |
+| --- | --- |
+| [sqlrules_default.py](https://github.com/eddiethedean/rowguard/blob/main/examples/sqlrules_default.py) | Library defaults (`use_sqlrules=True`) |
+| [basic.py](https://github.com/eddiethedean/rowguard/blob/main/examples/basic.py) | Inspect rejections (`use_sqlrules=False`, `collect`) |
+| [streaming.py](https://github.com/eddiethedean/rowguard/blob/main/examples/streaming.py) | Sync `stream` + retained rejections |
+| [async_basic.py](https://github.com/eddiethedean/rowguard/blob/main/examples/async_basic.py) | `aselect` / `astream` (`rowguard[async]`) |
+| [orm_projected.py](https://github.com/eddiethedean/rowguard/blob/main/examples/orm_projected.py) | ORM projection (`source=User`) |
+| [orm_entity.py](https://github.com/eddiethedean/rowguard/blob/main/examples/orm_entity.py) | Entity `table=User` |
+| [sqlmodel_basic.py](https://github.com/eddiethedean/rowguard/blob/main/examples/sqlmodel_basic.py) | SQLModel (`rowguard[sqlmodel]`) |
 
 ```bash
-pip install -e ".[dev,async,sqlmodel]"
-python examples/basic.py
+make install
 python examples/sqlrules_default.py
-python examples/streaming.py
-python examples/async_basic.py
-python examples/orm_projected.py
-python examples/orm_entity.py
-python examples/sqlmodel_basic.py
+python examples/basic.py
 ```
 
-## Minimal buffered example
+Full copy-paste walkthrough: [Quickstart](../guides/quickstart.md).
+
+## `validate_rows` (no SQL)
 
 ```python
-from typing import Annotated
-
-from pydantic import BaseModel, Field
-from sqlalchemy import Column, Integer, MetaData, String, Table, create_engine
-from sqlalchemy.orm import Session
-
-import rowguard
-
-
-class UserRead(BaseModel):
-    id: int
-    name: str
-    age: Annotated[int, Field(ge=18)]
-
-
-metadata = MetaData()
-users = Table(
-    "users",
-    metadata,
-    Column("id", Integer, primary_key=True),
-    Column("name", String),
-    Column("age", Integer),
+result = rowguard.validate_rows(
+    rows=[{"id": 1, "name": "Ada", "age": 37}, {"id": 2, "name": "Legacy", "age": 12}],
+    model=UserRead,
+    on_reject="collect",
 )
+```
 
-engine = create_engine("sqlite+pysqlite:///:memory:")
-metadata.create_all(engine)
+## `compile_plan` (inspect without executing)
 
-with engine.begin() as connection:
-    connection.execute(
-        users.insert(),
-        [
-            {"id": 1, "name": "Ada", "age": 37},
-            {"id": 2, "name": "Legacy", "age": 12},
-        ],
-    )
+```python
+plan = rowguard.compile_plan(table=users, model=UserRead)
+print(plan.pushdown_plan.enabled, plan.execution_id)
+```
 
-with Session(engine) as session:
-    result = rowguard.select(
+## Raise policy
+
+```python
+try:
+    rowguard.select(
         session=session,
         table=users,
         model=UserRead,
-        on_reject="collect",
+        on_reject="raise",
         use_sqlrules=False,
     )
-    print(result.models)
-    print(result.rejected)
+except rowguard.RowValidationError as exc:
+    print(exc.row_index, exc.validation_error)
 ```
 
 ## Next
 
-- [Quickstart](../guides/quickstart.md)
-- [Async guide](../guides/async.md)
-- [Streaming guide](../guides/streaming.md)
+- [Streaming observers](../guides/streaming.md#observers)
+- [Async](../guides/async.md)
+- [ORM and SQLModel](../guides/orm-sqlmodel.md)

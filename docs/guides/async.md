@@ -9,13 +9,25 @@ RowGuard ships first-class async APIs over SQLAlchemy `AsyncSession` and
 | `execute` | `aexecute` |
 | `stream` | `astream` → `AsyncStreamResult` |
 
-Install extras:
-
 ```bash
 pip install "rowguard[async]"
 ```
 
-## Buffered
+Pass exactly one of `session=` or `connection=` (`AsyncSession` /
+`AsyncConnection`).
+
+## Default path
+
+```python
+result = await rowguard.aselect(
+    session=session,
+    table=users,
+    model=UserRead,
+)
+# use_sqlrules=True, on_reject="raise" by default
+```
+
+## Inspect rejections
 
 ```python
 result = await rowguard.aselect(
@@ -23,10 +35,10 @@ result = await rowguard.aselect(
     table=users,
     model=UserRead,
     on_reject="collect",
+    use_sqlrules=False,
 )
+print(result.rejected)
 ```
-
-Returns the same `QueryResult` type as sync.
 
 ## Streaming
 
@@ -46,8 +58,7 @@ async with rowguard.astream(
 ## Event-loop note
 
 Only database I/O is awaited. Pydantic validation runs synchronously on the
-event loop and can block under heavy models. Prefer lean read models on hot
-paths.
+event loop and can block under heavy models. See [Performance](performance.md).
 
 ## Not in 0.5
 
@@ -55,7 +66,8 @@ paths.
 - Thread-pool wrappers around sync APIs
 - Required asyncpg CI matrix (sqlite+aiosqlite is the async CI driver)
 
-## Deep dive
+## Related
 
-- [Async architecture](../architecture/ASYNC.md)
 - Example: `examples/async_basic.py`
+- [ORM and SQLModel](orm-sqlmodel.md) (async entity/`astream` supported)
+- Design notes: [Async architecture](../architecture/ASYNC.md)

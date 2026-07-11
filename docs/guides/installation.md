@@ -4,7 +4,7 @@
 
 | Requirement | Notes |
 | --- | --- |
-| Python | **3.10+** (3.10–3.12 tested in CI) |
+| Python | **3.10+** (3.10–3.12 tested in CI; **3.13 untested**) |
 | Pydantic | v2 (`pydantic>=2.7,<3`) |
 | SQLAlchemy | 2.x (`SQLAlchemy>=2.0,<3`) |
 | SQLRules | **≥ 1.0.0, &lt; 2** |

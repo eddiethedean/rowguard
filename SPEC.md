@@ -57,9 +57,10 @@ RowGuard is responsible for:
 
 RowGuard is **not** responsible for:
 
--   ORM mapping
+-   Owning ORM persistence or relationship graphs (0.5 **does** validate ORM /
+    SQLModel **reads**)
 -   Schema migrations
--   SQL generation
+-   SQL generation beyond applying SQLRules / `where=` expressions
 -   Database drivers
 -   Database connections
 

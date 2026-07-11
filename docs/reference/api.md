@@ -76,4 +76,7 @@ SQLRules defaults, and async caveats, use the narrative
 
 .. autoexception:: rowguard.RejectHandlerError
    :show-inheritance:
+
+.. autoexception:: rowguard.ResultAssemblyError
+   :show-inheritance:
 ```
