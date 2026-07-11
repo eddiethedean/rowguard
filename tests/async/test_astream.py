@@ -89,9 +89,12 @@ async def test_astream_raise_records_rejection(async_session, users_table) -> No
         on_reject="raise",
         use_sqlrules=False,
     )
+    seen: list[str] = []
     with pytest.raises(RowValidationError):
         async with stream:
-            _ = [model async for model in stream]
+            async for model in stream:
+                seen.append(model.name)
+    assert seen == ["Ada"]
     assert stream.closed
     assert stream.statistics.rows_rejected >= 1
     assert not stream.is_clean

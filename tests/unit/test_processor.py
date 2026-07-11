@@ -11,7 +11,7 @@ from rowguard.planning.execution_plan import (
     RejectionPlan,
     ValidationPlan,
 )
-from rowguard.rejection.policies import CollectPolicy, SkipPolicy
+from rowguard.rejection.policies import CollectPolicy, RaisePolicy, SkipPolicy
 from rowguard.validation.pydantic import PydanticValidator
 
 
@@ -21,7 +21,12 @@ class UserRead(BaseModel):
 
 
 def _plan(*, on_reject: str = "collect") -> ExecutionPlan[UserRead]:
-    policy = CollectPolicy() if on_reject == "collect" else SkipPolicy()
+    if on_reject == "collect":
+        policy: CollectPolicy | SkipPolicy | RaisePolicy = CollectPolicy()
+    elif on_reject == "skip":
+        policy = SkipPolicy()
+    else:
+        policy = RaisePolicy()
     return ExecutionPlan(
         statement=None,
         model=UserRead,
@@ -66,4 +71,50 @@ def test_process_row_skip_does_not_retain() -> None:
         plan=_plan(on_reject="skip"),
     )
     assert processed.model is None
+    assert processed.retain_rejection is False
+
+
+def test_process_row_raise_on_validation_failure() -> None:
+    from rowguard.errors import RowValidationError
+
+    processed = process_row(
+        row={"id": "bad", "name": "Ada"},
+        index=4,
+        plan=_plan(on_reject="raise"),
+    )
+    assert processed.model is None
+    assert processed.retain_rejection is False
+    assert processed.continue_processing is False
+    assert isinstance(processed.raise_error, RowValidationError)
+    assert processed.raise_error.row_index == 4
+    assert processed.raise_error.model is UserRead
+
+
+def test_process_row_custom_stop_without_error() -> None:
+    from rowguard.rejection.base import RejectionDecision
+
+    class StopQuietly:
+        def handle(self, rejected: object) -> RejectionDecision:
+            return RejectionDecision(
+                continue_processing=False,
+                retain_rejection=False,
+                error=None,
+            )
+
+    plan = ExecutionPlan(
+        statement=None,
+        model=UserRead,
+        pushdown_plan=PushdownPlan(enabled=False),
+        adapter_plan=AdapterPlan(adapter=SQLAlchemyRowAdapter()),
+        validation_plan=ValidationPlan(
+            validator=PydanticValidator(UserRead),
+            model=UserRead,
+        ),
+        rejection_plan=RejectionPlan(policy=StopQuietly(), policy_name="stop"),
+        use_sqlrules=False,
+    )
+    processed = process_row(row={"id": "bad", "name": "Ada"}, index=0, plan=plan)
+    assert processed.model is None
+    assert processed.raise_error is None
+    assert processed.continue_processing is False
     assert processed.retain_rejection is False

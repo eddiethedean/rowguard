@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import gc
+import weakref
 from typing import Annotated
 
 from pydantic import BaseModel, Field
@@ -30,6 +32,18 @@ def test_stream_does_not_retain_accepted_models() -> None:
     with engine.begin() as connection:
         connection.execute(users.insert(), rows)
 
+    def _consume(
+        stream: rowguard.StreamResult[UserRead],
+    ) -> tuple[list[weakref.ref[UserRead]], int]:
+        refs: list[weakref.ref[UserRead]] = []
+        count = 0
+        for model in stream:
+            refs.append(weakref.ref(model))
+            count += 1
+            assert not hasattr(stream, "_accepted")
+            assert not hasattr(stream, "models")
+        return refs, count
+
     with Session(engine) as session, rowguard.stream(
         session=session,
         table=users,
@@ -37,13 +51,12 @@ def test_stream_does_not_retain_accepted_models() -> None:
         on_reject="skip",
         use_sqlrules=False,
     ) as stream:
-        count = 0
-        for _model in stream:
-            count += 1
-            # Accepted models must not accumulate on the stream object.
-            assert not hasattr(stream, "_accepted")
-            assert not hasattr(stream, "models")
+        refs, count = _consume(stream)
 
     assert count == 5_000
     assert stream.statistics.rows_accepted == 5_000
     assert stream.rejected == ()
+
+    gc.collect()
+    alive = sum(1 for ref in refs if ref() is not None)
+    assert alive == 0, f"stream retained {alive} accepted models after iteration"

@@ -90,13 +90,15 @@ def test_compile_plan_rejects_bad_policy(users: Table) -> None:
         rowguard.compile_plan(table=users, model=UserRead, on_reject="nope")
 
 
-def test_cache_get_set_clear() -> None:
+def test_cache_evicts_least_recently_used() -> None:
     cache: LRUCache[str, int] = LRUCache(max_entries=2)
     cache.set("a", 1)
     cache.set("b", 2)
+    assert cache.get("a") == 1  # refresh a
+    cache.set("c", 3)  # evict b
+    assert cache.get("b") is None
     assert cache.get("a") == 1
-    cache.set("c", 3)
-    assert cache.get("b") is None or cache.get("c") == 3
+    assert cache.get("c") == 3
     cache.clear()
     assert cache.get("a") is None
 

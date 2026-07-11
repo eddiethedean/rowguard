@@ -10,7 +10,6 @@ from rowguard.errors import QueryExecutionError, RowAdaptationError
 from rowguard.execution.context import SyncExecutionContext
 from rowguard.execution.processor import process_row
 from rowguard.execution.sync import SyncExecutionEngine
-from rowguard.integrations.sqlalchemy_core import is_column_element
 from rowguard.planning.compiler import QueryPlanner
 from rowguard.planning.config import PushdownConfig, RejectionConfig
 from rowguard.planning.execution_plan import (
@@ -28,6 +27,7 @@ from rowguard.validation.pydantic import PydanticValidator
 class UserRead(BaseModel):
     id: int
     name: str
+    age: int = 18
 
 
 def _plan(*, policy: CollectPolicy | RaisePolicy) -> ExecutionPlan[UserRead]:
@@ -101,14 +101,6 @@ def test_parameters_forwarded_nonempty(session, users_table) -> None:
     assert result.models[0].id == 1
 
 
-def test_is_column_element() -> None:
-    from sqlalchemy import Column, Integer, MetaData, Table
-
-    table = Table("t", MetaData(), Column("id", Integer, primary_key=True))
-    assert is_column_element(table.c.id)
-    assert not is_column_element("id")
-
-
 def test_execute_wraps_database_errors(users_table) -> None:
     class BrokenSession:
         def execute(self, *_args, **_kwargs):
@@ -129,16 +121,28 @@ def test_execute_wraps_database_errors(users_table) -> None:
         )
 
 
-def test_validate_rows_with_parameters_path(session, users_table) -> None:
-    result = rowguard.execute(
-        session=session,
-        statement=select(users_table).where(users_table.c.id == 1),
-        model=UserRead,
-        on_reject="collect",
-        use_sqlrules=False,
-        parameters={},
+def test_validate_rows_skip_counts_without_retaining() -> None:
+    from typing import Annotated
+
+    from pydantic import Field
+
+    class Adult(BaseModel):
+        id: int
+        name: str
+        age: Annotated[int, Field(ge=18)]
+
+    result = rowguard.validate_rows(
+        rows=[
+            {"id": 1, "name": "Ada", "age": 37},
+            {"id": 2, "name": "Legacy", "age": 12},
+        ],
+        model=Adult,
+        on_reject="skip",
     )
-    assert result.valid_count >= 0
+    assert result.valid_count == 1
+    assert result.rejected == ()
+    assert result.statistics.rows_rejected == 1
+    assert result.has_rejections
 
 
 def test_compile_plan_public_api(users_table) -> None:

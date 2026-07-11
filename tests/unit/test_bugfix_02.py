@@ -22,8 +22,10 @@ from rowguard.execution.sync import SyncExecutionEngine
 from rowguard.integrations.sqlrules import SQLRulesBridge
 from rowguard.planning.compiler import QueryPlanner
 from rowguard.planning.config import (
+    DiagnosticsConfig,
     PushdownConfig,
     RejectionConfig,
+    ValidationConfig,
 )
 from rowguard.planning.execution_plan import (
     AdapterPlan,
@@ -218,7 +220,68 @@ def test_plan_cache_distinguishes_compiled_rules() -> None:
             pushdown=PushdownConfig(enabled=True, compiled_rules=other),
         )
     )
-    assert first.execution_id != second.execution_id
+    # Different compiled_rules object identity → cache miss.
+    assert first.statement is not second.statement
+    assert first.pushdown_plan.expressions is not second.pushdown_plan.expressions
+    third = planner.compile(
+        QueryRequest(
+            model=UserRead,
+            source=a,
+            pushdown=PushdownConfig(enabled=True, compiled_rules=compiled.compiled_rules),
+        )
+    )
+    # Same compiled_rules object → cache hit (shared statement/expressions, new execution_id).
+    assert third.statement is first.statement
+    assert third.pushdown_plan.expressions is first.pushdown_plan.expressions
+    assert third.execution_id != first.execution_id
+
+
+def test_plan_cache_distinguishes_strict_and_diagnostics() -> None:
+    a, _ = _tables()
+    cache: LRUCache[str, ExecutionPlan[object]] = LRUCache(max_entries=8)
+    planner = QueryPlanner[UserRead](cache=cache, cache_enabled=True)
+    base = planner.compile(
+        QueryRequest(
+            model=UserRead,
+            source=a,
+            pushdown=PushdownConfig(enabled=False),
+            validation=ValidationConfig(strict=False),
+            diagnostics=DiagnosticsConfig(enabled=True),
+        )
+    )
+    strict = planner.compile(
+        QueryRequest(
+            model=UserRead,
+            source=a,
+            pushdown=PushdownConfig(enabled=False),
+            validation=ValidationConfig(strict=True),
+            diagnostics=DiagnosticsConfig(enabled=True),
+        )
+    )
+    quiet = planner.compile(
+        QueryRequest(
+            model=UserRead,
+            source=a,
+            pushdown=PushdownConfig(enabled=False),
+            validation=ValidationConfig(strict=False),
+            diagnostics=DiagnosticsConfig(enabled=False),
+        )
+    )
+    assert base.statement is not strict.statement
+    assert base.statement is not quiet.statement
+    assert base.validation_plan.strict is False
+    assert strict.validation_plan.strict is True
+    hit = planner.compile(
+        QueryRequest(
+            model=UserRead,
+            source=a,
+            pushdown=PushdownConfig(enabled=False),
+            validation=ValidationConfig(strict=False),
+            diagnostics=DiagnosticsConfig(enabled=True),
+        )
+    )
+    assert hit.statement is base.statement
+    assert hit.execution_id != base.execution_id
 
 
 def test_column_map_rejects_cross_table_columns() -> None:
@@ -271,6 +334,59 @@ def test_close_failure_does_not_mask_validation_error() -> None:
             plan,
             SyncExecutionContext(session=BoomSession()),
         )
+
+
+def test_close_failure_surfaces_when_clean() -> None:
+    a, _ = _tables()
+
+    class BoomResult:
+        def __iter__(self):
+            return iter([{"id": 1, "name": "Ada", "age": 37}])
+
+        def close(self) -> None:
+            raise RuntimeError("close failed")
+
+    class BoomSession:
+        def execute(self, *_args, **_kwargs):
+            return BoomResult()
+
+    plan = QueryPlanner[UserRead]().compile(
+        QueryRequest(
+            model=UserRead,
+            source=a,
+            pushdown=PushdownConfig(enabled=False),
+            rejection=RejectionConfig(policy="collect"),
+        )
+    )
+    with pytest.raises(RuntimeError, match="close failed"):
+        SyncExecutionEngine[UserRead]().execute(
+            plan,
+            SyncExecutionContext(session=BoomSession()),
+        )
+
+
+def test_sqlrules_compile_failure_preserves_cause(monkeypatch: pytest.MonkeyPatch) -> None:
+    a, _ = _tables()
+
+    class BoomSqlrules:
+        class Compiler:
+            def __init__(self, *args, **kwargs) -> None:
+                pass
+
+            def compile(self, *args, **kwargs):
+                raise ValueError("boom compile")
+
+        @staticmethod
+        def where(_rules):
+            return ()
+
+    import sys
+
+    monkeypatch.setitem(sys.modules, "sqlrules", BoomSqlrules)
+    with pytest.raises(PlanningError, match="SQLRules compilation failed") as exc_info:
+        SQLRulesBridge().compile(model=UserRead, source=a)
+    assert isinstance(exc_info.value.__cause__, ValueError)
+    assert "boom compile" in str(exc_info.value.__cause__)
 
 
 def test_validate_rows_unknown_field_map_key() -> None:
@@ -343,11 +459,31 @@ def test_unexpected_adapter_exception_routed_to_rejection() -> None:
 
 
 def test_strict_via_select(session, users_table) -> None:
-    # Existing rows are already ints; compile with strict to ensure the knob is accepted.
-    plan = rowguard.compile_plan(
-        table=users_table,
+    from sqlalchemy import literal
+
+    stmt = select(
+        users_table.c.id,
+        users_table.c.name,
+        literal("37").label("age"),
+    ).where(users_table.c.id == 1)
+    result = rowguard.execute(
+        session=session,
+        statement=stmt,
         model=UserRead,
+        on_reject="collect",
         use_sqlrules=False,
         strict=True,
     )
-    assert plan.validation_plan.strict is True
+    assert result.models == ()
+    assert result.statistics.rows_rejected == 1
+
+    coerced = rowguard.execute(
+        session=session,
+        statement=stmt,
+        model=UserRead,
+        on_reject="collect",
+        use_sqlrules=False,
+        strict=False,
+    )
+    assert coerced.valid_count == 1
+    assert coerced.models[0].age == 37

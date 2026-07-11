@@ -140,6 +140,22 @@ def test_orm_select_mapped_class_entity(orm_session: Session) -> None:
 
 
 @pytest.mark.integration
+def test_orm_stream_entity_collect(orm_session: Session) -> None:
+    with rowguard.stream(
+        session=orm_session,
+        table=User,
+        model=UserRead,
+        on_reject="collect",
+        use_sqlrules=False,
+    ) as stream:
+        models = list(stream)
+    assert {m.name for m in models} == {"Ada", "Grace"}
+    assert stream.rejected_count == 1
+    assert stream.rejected[0].source_identity == {"id": 2}
+    assert stream.closed
+
+
+@pytest.mark.integration
 def test_orm_entity_from_attributes(orm_session: Session) -> None:
     result = rowguard.select(
         session=orm_session,
@@ -155,15 +171,34 @@ def test_orm_entity_from_attributes(orm_session: Session) -> None:
 
 @pytest.mark.integration
 def test_orm_unloaded_attributes_error(orm_session: Session) -> None:
+    from rowguard.execution.processor import process_row
+
     user = orm_session.get(User, 1)
     assert user is not None
     orm_session.expire(user)
 
-    from rowguard.adapters.orm_entity import ORMEntityAdapter
+    plan = rowguard.compile_plan(
+        model=UserRead,
+        table=User,
+        on_reject="collect",
+        use_sqlrules=False,
+    )
+    processed = process_row(row=user, index=0, plan=plan)
+    assert processed.model is None
+    assert processed.rejected is not None
+    assert processed.rejected.source_identity == {"id": 1}
+    assert processed.rejected.adaptation_error is not None
+    assert "unloaded" in str(processed.rejected.adaptation_error).lower()
 
-    adapter = ORMEntityAdapter(attribute_keys=("id", "name", "age"), mapped_class=User)
-    with pytest.raises(RowAdaptationError, match="unloaded"):
-        adapter.adapt(user)
+    raise_plan = rowguard.compile_plan(
+        model=UserRead,
+        table=User,
+        on_reject="raise",
+        use_sqlrules=False,
+    )
+    raised = process_row(row=user, index=0, plan=raise_plan)
+    assert isinstance(raised.raise_error, RowAdaptationError)
+    assert "unloaded" in str(raised.raise_error).lower()
 
 
 @pytest.mark.integration

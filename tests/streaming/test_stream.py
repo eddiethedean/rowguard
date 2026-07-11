@@ -110,8 +110,11 @@ def test_stream_raise_policy_closes(session, users_table) -> None:
         on_reject="raise",
         use_sqlrules=False,
     )
+    seen: list[str] = []
     with pytest.raises(RowValidationError), stream:
-        list(stream)
+        for model in stream:
+            seen.append(model.name)
+    assert seen == ["Ada"]
     assert stream.closed
     assert stream.statistics.rows_rejected >= 1
     assert not stream.is_clean

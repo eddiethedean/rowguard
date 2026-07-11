@@ -161,6 +161,8 @@ def test_entity_adapter_rejects_relationship_at_runtime() -> None:
 
 
 def test_entity_adapter_from_attributes_subject() -> None:
+    from rowguard.execution.processor import process_row
+
     engine = create_engine("sqlite+pysqlite:///:memory:")
     Base.metadata.create_all(engine)
     with Session(engine) as session:
@@ -174,6 +176,16 @@ def test_entity_adapter_from_attributes_subject() -> None:
         ).adapt(row)
         assert adapted.attributes_subject is not None
         assert is_orm_instance(adapted.attributes_subject)
+
+        plan = rowguard.compile_plan(
+            model=UserRead,
+            table=User,
+            orm_validation="from_attributes",
+            on_reject="collect",
+            use_sqlrules=False,
+        )
+        processed = process_row(row=row, index=0, plan=plan)
+        assert processed.model == UserRead(id=1, name="Ada", age=37)
 
 
 def test_entity_adapter_direct_instance() -> None:
@@ -381,6 +393,10 @@ def test_joined_inheritance_column_map() -> None:
         use_sqlrules=True,
     )
     assert plan.use_sqlrules
+    assert plan.resolved_source is not None
+    assert "name" in plan.resolved_source.columns
+    assert "child_only" in plan.resolved_source.columns
+    assert set(plan.adapter_plan.expected_keys) >= {"id", "name", "child_only"}
 
 
 def test_select_as_source_compiles() -> None:

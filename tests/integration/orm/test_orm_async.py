@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 import rowguard
+from rowguard.errors import RowValidationError
 
 
 class Base(DeclarativeBase):
@@ -61,3 +62,62 @@ async def test_orm_async_projected_smoke(async_orm_session: AsyncSession) -> Non
     )
     assert result.valid_count == 2
     assert result.rejected_count == 0
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_orm_async_entity_aselect_collect(async_orm_session: AsyncSession) -> None:
+    result = await rowguard.aselect(
+        session=async_orm_session,
+        table=User,
+        model=UserRead,
+        on_reject="collect",
+        use_sqlrules=False,
+    )
+    assert result.valid_count == 2
+    assert result.rejected_count == 1
+    assert result.rejected[0].source_identity == {"id": 2}
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_orm_async_entity_aselect_raise(async_orm_session: AsyncSession) -> None:
+    with pytest.raises(RowValidationError):
+        await rowguard.aselect(
+            session=async_orm_session,
+            table=User,
+            model=UserRead,
+            on_reject="raise",
+            use_sqlrules=False,
+        )
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_orm_async_entity_from_attributes(async_orm_session: AsyncSession) -> None:
+    result = await rowguard.aselect(
+        session=async_orm_session,
+        table=User,
+        model=UserRead,
+        on_reject="collect",
+        use_sqlrules=True,
+        orm_validation="from_attributes",
+    )
+    assert result.valid_count == 2
+    assert result.rejected_count == 0
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_orm_async_astream_entity(async_orm_session: AsyncSession) -> None:
+    async with rowguard.astream(
+        session=async_orm_session,
+        table=User,
+        model=UserRead,
+        on_reject="collect",
+        use_sqlrules=False,
+    ) as stream:
+        models = [model async for model in stream]
+    assert {m.name for m in models} == {"Ada", "Grace"}
+    assert stream.rejected_count == 1
+    assert stream.closed
