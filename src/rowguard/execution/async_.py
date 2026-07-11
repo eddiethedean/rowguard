@@ -8,6 +8,7 @@ from pydantic import BaseModel
 
 from rowguard.errors import QueryExecutionError, ResultAssemblyError, RowGuardError
 from rowguard.execution.context import AsyncExecutionContext
+from rowguard.execution.guards import require_session_for_entity_plan
 from rowguard.execution.processor import ProcessedRow, process_row
 from rowguard.execution.state import ExecutionState
 from rowguard.planning.execution_plan import ExecutionPlan
@@ -95,6 +96,7 @@ class AsyncExecutionEngine(Generic[T]):
         plan: ExecutionPlan[T],
         context: AsyncExecutionContext,
     ) -> Any:
+        require_session_for_entity_plan(plan, session=context.session)
         params = dict(plan.parameters) if plan.parameters else {}
         if context.session is not None:
             if params:

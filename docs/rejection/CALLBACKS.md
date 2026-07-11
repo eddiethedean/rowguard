@@ -1,6 +1,6 @@
 # CALLBACKS.md
 
-:::{admonition} Status: not shipped in 0.4.0
+:::{admonition} Status: not shipped in 0.5.0
 :class: warning
 
 This document is a **design draft for 0.6.0**. Callback rejection policies are

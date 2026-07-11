@@ -27,7 +27,7 @@ pip install rowguard[async]      # aiosqlite helpers for async examples/tests
 pip install rowguard[sqlmodel]   # SQLModel table-source support
 ```
 
-Requires Python 3.10+, Pydantic v2, SQLAlchemy 2.x, and SQLRules ≥0.4. See the
+Requires Python 3.10+, Pydantic v2, SQLAlchemy 2.x, and SQLRules ≥1.0. See the
 [installation guide](https://rowguard.readthedocs.io/en/latest/guides/installation.html).
 
 ## Quickstart
@@ -191,11 +191,14 @@ See [Contributing](https://rowguard.readthedocs.io/en/latest/developer/CONTRIBUT
 [Releasing](https://rowguard.readthedocs.io/en/latest/project/releasing.html).
 
 ```bash
-pip install -e ".[dev,async]"
+pip install -e ".[dev,async,sqlmodel]"
 make all          # ruff + mypy + pytest --cov
 python examples/basic.py
 python examples/streaming.py
 python examples/async_basic.py
+python examples/orm_projected.py
+python examples/orm_entity.py
+python examples/sqlmodel_basic.py
 ```
 
 ## License

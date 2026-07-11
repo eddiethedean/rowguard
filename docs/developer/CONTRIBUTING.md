@@ -86,7 +86,7 @@ Install development dependencies:
 
 ```bash
 python -m pip install --upgrade pip
-python -m pip install -e ".[dev,async]"
+python -m pip install -e ".[dev,async,sqlmodel]"
 ```
 
 Additional extras may include:

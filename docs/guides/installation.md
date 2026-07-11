@@ -7,7 +7,7 @@
 | Python | **3.10+** (3.10–3.12 tested in CI) |
 | Pydantic | v2 (`pydantic>=2.7,<3`) |
 | SQLAlchemy | 2.x (`SQLAlchemy>=2.0,<3`) |
-| SQLRules | **≥ 0.4.0** |
+| SQLRules | **≥ 1.0.0, &lt; 2** |
 
 ## From PyPI
 
@@ -54,7 +54,7 @@ cd rowguard
 python -m venv .venv
 source .venv/bin/activate          # Windows: .venv\Scripts\activate
 python -m pip install -U pip
-pip install -e ".[dev,async]"
+pip install -e ".[dev,async,sqlmodel]"
 ```
 
 ## Verify
@@ -78,7 +78,7 @@ Opens at `docs/_build/html/index.html`.
 
 - **Resolver conflicts on Pydantic v1** — RowGuard requires Pydantic v2.
 - **`ModuleNotFoundError: aiosqlite`** — install `rowguard[async]`.
-- **Old sqlrules** — upgrade to `sqlrules>=0.4.0`.
+- **Old sqlrules** — upgrade to `sqlrules>=1.0.0,<2`.
 
 ## Next
 

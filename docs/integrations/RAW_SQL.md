@@ -1,10 +1,10 @@
 # RAW_SQL.md
 
-:::{admonition} Status: not shipped in 0.4.0
+:::{admonition} Status: not shipped in 0.5.0
 :class: warning
 
 This document is a **design draft for 0.8.0**. First-class raw `text()` support
-is **not available** yet. 0.4 works with SQLAlchemy `Select` / `Table` sources.
+is **not available** yet. 0.5 works with SQLAlchemy `Select` / `Table` sources.
 See [Supported vs planned](../project/supported.md).
 :::
 

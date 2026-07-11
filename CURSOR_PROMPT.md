@@ -12,7 +12,7 @@ regressions. Next planned milestone is **0.6.0 (rejection platform)** per
 - Python 3.10+
 - Pydantic v2
 - SQLAlchemy 2.x
-- SQLRules integration (`sqlrules>=0.4.0`)
+- SQLRules integration (`sqlrules>=1.0.0,<2`)
 - SQLAlchemy Core `Table` and `Select`
 - SQLAlchemy ORM mapped classes (projected + single-entity)
 - SQLModel table sources (`rowguard[sqlmodel]`)

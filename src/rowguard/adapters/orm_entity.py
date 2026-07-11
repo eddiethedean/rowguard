@@ -9,9 +9,9 @@ from rowguard.errors import RowAdaptationError
 from rowguard.integrations.sqlalchemy_orm import (
     entity_source_identity,
     extract_entity,
-    is_orm_instance,
+    is_attribute_unloaded,
     is_relationship_attr,
-    unloaded_attribute_names,
+    scalar_attr_keys,
 )
 
 
@@ -46,14 +46,11 @@ class ORMEntityAdapter:
     def adapt(self, row: object) -> AdaptedRow:
         entity = extract_entity(row)
         if entity is None:
-            if is_orm_instance(row):
-                entity = row
-            else:
-                raise RowAdaptationError(
-                    "Expected a single ORM entity row; got "
-                    f"{type(row).__name__}. Multi-entity or entity+scalar "
-                    "results are not supported — use an explicit projection."
-                )
+            raise RowAdaptationError(
+                "Expected a single ORM entity row; got "
+                f"{type(row).__name__}. Multi-entity or entity+scalar "
+                "results are not supported — use an explicit projection."
+            )
 
         mapped_class = self._mapped_class or type(entity)
         planned = self._planned_attributes()
@@ -65,7 +62,13 @@ class ORMEntityAdapter:
                     "Use an explicit projection or nested adapter instead."
                 )
 
-        unloaded = unloaded_attribute_names(entity) & set(planned.values())
+        extractable = self._extractable_attributes(mapped_class, planned)
+
+        unloaded = {
+            attr_name
+            for attr_name in extractable.values()
+            if is_attribute_unloaded(entity, attr_name, mapped_class)
+        }
         if unloaded:
             names = ", ".join(sorted(unloaded))
             raise RowAdaptationError(
@@ -75,7 +78,7 @@ class ORMEntityAdapter:
             )
 
         mapping: dict[str, object] = {}
-        for field_name, attr_name in planned.items():
+        for field_name, attr_name in extractable.items():
             mapping[field_name] = getattr(entity, attr_name)
 
         identity = entity_source_identity(entity)
@@ -92,3 +95,21 @@ class ORMEntityAdapter:
         if self._attribute_map is not None:
             return dict(self._attribute_map)
         return {name: name for name in self._attribute_keys}
+
+    def _extractable_attributes(
+        self,
+        mapped_class: type[object],
+        planned: Mapping[str, str],
+    ) -> dict[str, str]:
+        """Keep only scalar mapped attrs; model-only fields are left to Pydantic."""
+        known = scalar_attr_keys(mapped_class)
+        extractable: dict[str, str] = {}
+        for field_name, attr_name in planned.items():
+            if attr_name in known:
+                extractable[field_name] = attr_name
+            elif self._attribute_map is not None:
+                raise RowAdaptationError(
+                    f"attribute_map target {attr_name!r} is not a mapped scalar "
+                    f"attribute on {mapped_class.__name__}"
+                )
+        return extractable

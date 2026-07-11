@@ -1,6 +1,6 @@
 # REFLECTION.md
 
-:::{admonition} Status: not shipped in 0.4.0
+:::{admonition} Status: not shipped in 0.5.0
 :class: warning
 
 This document is a **design draft for 0.8.0**. Schema reflection helpers are

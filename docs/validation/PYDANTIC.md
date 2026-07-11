@@ -159,12 +159,12 @@ model = UserRead.model_validate(
 )
 ```
 
-Potential API:
+Shipped API:
 
 ```python
 rowguard.select(
     ...,
-    validation_input="attributes",
+    orm_validation="from_attributes",
 )
 ```
 
@@ -1506,9 +1506,9 @@ result = rowguard.select(
 ```python
 result = rowguard.select(
     session=session,
-    entity=User,
+    table=User,
     model=UserRead,
-    validation_input="attributes",
+    orm_validation="from_attributes",
 )
 ```
 

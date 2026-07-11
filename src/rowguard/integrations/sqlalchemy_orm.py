@@ -7,7 +7,7 @@ from typing import Any, Literal, cast
 
 from sqlalchemy import Column
 from sqlalchemy import inspect as sa_inspect
-from sqlalchemy.orm import InstanceState, Mapper
+from sqlalchemy.orm import InstanceState, Mapper, Synonym
 from sqlalchemy.sql import Select
 
 ResultShape = Literal["entity", "projection", "unsupported"]
@@ -42,15 +42,40 @@ def mapped_table(mapped: type[Any]) -> Any:
 
 
 def mapped_columns(mapped: type[Any]) -> dict[str, Column[Any]]:
-    """Return ``{column_name: Column}`` for a mapped class's local table."""
-    table = mapped_table(mapped)
-    return {col.name: col for col in table.columns}
+    """Return ``{column_key: Column}`` for all mapper columns (incl. inherited)."""
+    mapper = cast(Mapper[Any], sa_inspect(mapped))
+    columns: dict[str, Column[Any]] = {}
+    for column in mapper.columns:
+        columns[column.key] = column
+    return columns
 
 
 def mapped_column_attr_keys(mapped: type[Any]) -> tuple[str, ...]:
     """Return mapper column attribute keys (scalar persistence attributes)."""
     mapper = cast(Mapper[Any], sa_inspect(mapped))
     return tuple(mapper.column_attrs.keys())
+
+
+def synonym_target(mapped: type[Any], attr_name: str) -> str | None:
+    """Return the underlying attribute name for a synonym, else None."""
+    mapper = cast(Mapper[Any], sa_inspect(mapped))
+    try:
+        prop = mapper.attrs[attr_name]
+    except KeyError:
+        return None
+    if isinstance(prop, Synonym):
+        return prop.name
+    return None
+
+
+def scalar_attr_keys(mapped: type[Any]) -> set[str]:
+    """Column attrs plus synonym keys that proxy column attrs."""
+    keys = set(mapped_column_attr_keys(mapped))
+    mapper = cast(Mapper[Any], sa_inspect(mapped))
+    for key, prop in mapper.attrs.items():
+        if isinstance(prop, Synonym) and prop.name in keys:
+            keys.add(key)
+    return keys
 
 
 def is_relationship_attr(mapped: type[Any], attr_name: str) -> bool:
@@ -120,16 +145,29 @@ def unloaded_attribute_names(entity: object) -> set[str]:
     return unloaded | expired
 
 
+def is_attribute_unloaded(entity: object, attr_name: str, mapped: type[Any]) -> bool:
+    """Return True if *attr_name* is unloaded, resolving synonyms to targets."""
+    unloaded = unloaded_attribute_names(entity)
+    target = synonym_target(mapped, attr_name)
+    check_name = target if target is not None else attr_name
+    # Synonym keys often remain listed in state.unloaded even when the target
+    # column is loaded — only the target (or non-synonym key) matters.
+    if target is not None:
+        return check_name in unloaded
+    return attr_name in unloaded
+
+
 def entity_source_identity(entity: object) -> dict[str, object] | None:
     """Return a primary-key dict for *entity*, or None if unavailable."""
     state = cast(InstanceState[Any], sa_inspect(entity))
     mapper = state.mapper
     identity: dict[str, object] = {}
     pk_cols = list(mapper.primary_key)
+    unloaded = unloaded_attribute_names(entity)
     for column in pk_cols:
         prop = mapper.get_property_by_column(column)
         key = prop.key
-        if key in unloaded_attribute_names(entity):
+        if key in unloaded:
             if state.identity is None:
                 return None
             idx = pk_cols.index(column)
@@ -144,12 +182,15 @@ __all__ = [
     "classify_select_shape",
     "entity_source_identity",
     "extract_entity",
+    "is_attribute_unloaded",
     "is_mapped_class",
     "is_orm_instance",
     "is_relationship_attr",
     "mapped_column_attr_keys",
     "mapped_columns",
     "mapped_table",
+    "scalar_attr_keys",
     "single_entity_class",
+    "synonym_target",
     "unloaded_attribute_names",
 ]

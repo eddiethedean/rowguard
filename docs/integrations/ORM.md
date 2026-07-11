@@ -15,7 +15,7 @@ page retains deeper design notes; where they conflict with the guide or
 
 RowGuard supports SQLAlchemy ORM applications without becoming an ORM itself.
 
-When shipped, the ORM integration will allow RowGuard to:
+The ORM integration allows RowGuard to:
 
 - Query mapped classes through SQLAlchemy.
 - Validate selected database values into Pydantic models.
@@ -144,7 +144,7 @@ A simple mapped-class query may look like:
 ```python
 result = rowguard.select(
     session=session,
-    entity=User,
+    table=User,
     model=UserRead,
 )
 ```
@@ -366,15 +366,18 @@ Preferred approaches:
 3. Detect unloaded or expired attributes.
 4. Raise or report a clear adaptation error instead of silently loading them.
 
-Potential policy:
+Shipped in 0.5:
 
 ```python
-unloaded_attributes="error"      # recommended
+unloaded_attributes="error"      # only supported value
+```
+
+Design / future (not shipped):
+
+```python
 unloaded_attributes="load"
 unloaded_attributes="omit"
 ```
-
-The MVP should prefer `"error"` or projected queries.
 
 ---
 
@@ -844,7 +847,14 @@ Raw ORM entity retention should be configurable because entities:
 - May retain large graphs.
 - May not be safely serializable.
 
-Recommended default:
+Recommended default (shipped behavior):
+
+```python
+# Live ORM entities are not retained on RejectedRow by default.
+# Primary-key identity is exposed as RejectedRow.source_identity.
+```
+
+Design / future knobs (not shipped):
 
 ```python
 retain_raw_entity=False
@@ -1153,6 +1163,7 @@ stmt = select(
 result = rowguard.execute(
     session=session,
     statement=stmt,
+    source=User,
     model=UserRead,
 )
 ```
@@ -1164,7 +1175,7 @@ This is the clearest and most predictable ORM integration.
 ```python
 result = rowguard.select(
     session=session,
-    entity=User,
+    table=User,
     model=UserRead,
     orm_validation="mapping",
 )

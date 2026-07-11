@@ -259,3 +259,176 @@ def test_inspect_exception_paths() -> None:
     ):
         assert is_mapped_class(User) is False
         assert is_orm_instance(User(id=1, name="a", age=1)) is False
+
+
+def test_attribute_map_with_from_attributes_rejected() -> None:
+    with pytest.raises(PlanningError, match="attribute_map cannot be combined"):
+        rowguard.compile_plan(
+            model=UserRead,
+            table=User,
+            attribute_map={"id": "id", "name": "name", "age": "age"},
+            orm_validation="from_attributes",
+            use_sqlrules=False,
+        )
+
+
+def test_field_map_on_entity_rejected() -> None:
+    with pytest.raises(PlanningError, match="field_map is only valid"):
+        rowguard.compile_plan(
+            model=UserRead,
+            table=User,
+            field_map={"id": "id"},
+            use_sqlrules=False,
+        )
+
+
+def test_relationship_model_field_rejected_at_plan_time() -> None:
+    class WithTeam(BaseModel):
+        id: int
+        name: str
+        team: str
+
+    with pytest.raises(PlanningError, match="relationship"):
+        rowguard.compile_plan(model=WithTeam, table=User, use_sqlrules=False)
+
+
+def test_model_only_default_field_ok() -> None:
+    class WithNote(BaseModel):
+        id: int
+        name: str
+        age: Annotated[int, Field(ge=18)]
+        note: str = "n/a"
+
+    engine = create_engine("sqlite+pysqlite:///:memory:")
+    Base.metadata.create_all(engine)
+    with Session(engine) as session:
+        session.add(User(id=1, name="Ada", age=37))
+        session.commit()
+        result = rowguard.select(
+            session=session,
+            table=User,
+            model=WithNote,
+            on_reject="collect",
+            use_sqlrules=False,
+        )
+        assert result.valid_count == 1
+        assert result.models[0].note == "n/a"
+
+
+def test_synonym_not_falsely_unloaded() -> None:
+    from sqlalchemy.orm import synonym
+
+    class SynUser(Base):
+        __tablename__ = "syn_users"
+        id: Mapped[int] = mapped_column(primary_key=True)
+        name: Mapped[str]
+        uname = synonym("name")
+
+    engine = create_engine("sqlite+pysqlite:///:memory:")
+    Base.metadata.create_all(engine)
+    with Session(engine) as session:
+        session.add(SynUser(id=1, name="Ada"))
+        session.commit()
+        row = session.execute(select(SynUser)).one()
+
+        class SynRead(BaseModel):
+            id: int
+            uname: str
+
+        adapted = ORMEntityAdapter(
+            attribute_keys=("id", "uname"),
+            attribute_map={"id": "id", "uname": "uname"},
+            mapped_class=SynUser,
+        ).adapt(row)
+        assert adapted.mapping == {"id": 1, "uname": "Ada"}
+
+
+def test_joined_inheritance_column_map() -> None:
+    from typing import ClassVar
+
+    class Parent(Base):
+        __tablename__ = "parents"
+        id: Mapped[int] = mapped_column(primary_key=True)
+        name: Mapped[str]
+        type: Mapped[str]
+        __mapper_args__: ClassVar[dict[str, str]] = {
+            "polymorphic_on": "type",
+            "polymorphic_identity": "parent",
+        }
+
+    class Child(Parent):
+        __tablename__ = "children"
+        id: Mapped[int] = mapped_column(ForeignKey("parents.id"), primary_key=True)
+        child_only: Mapped[str]
+        __mapper_args__: ClassVar[dict[str, str]] = {"polymorphic_identity": "child"}
+
+    assert "name" in mapped_columns(Child)
+    assert "child_only" in mapped_columns(Child)
+
+    class ChildRead(BaseModel):
+        id: int
+        name: str
+        child_only: str
+
+    plan = rowguard.compile_plan(
+        model=ChildRead,
+        table=Child,
+        column_map={
+            "id": Child.id,
+            "name": Child.name,
+            "child_only": Child.child_only,
+        },
+        use_sqlrules=True,
+    )
+    assert plan.use_sqlrules
+
+
+def test_select_as_source_compiles() -> None:
+    stmt = select(User.id, User.name, User.age)
+    plan = rowguard.compile_plan(
+        model=UserRead,
+        source=stmt,
+        use_sqlrules=False,
+    )
+    assert plan.statement is not None
+    assert plan.adapter_plan.result_shape == "projection"
+
+
+def test_connection_entity_requires_session() -> None:
+    engine = create_engine("sqlite+pysqlite:///:memory:")
+    Base.metadata.create_all(engine)
+    with engine.begin() as connection:
+        connection.execute(
+            User.__table__.insert(),
+            [{"id": 1, "name": "Ada", "age": 37, "team_id": None}],
+        )
+    with engine.connect() as connection, pytest.raises(ConfigurationError, match="Session"):
+        rowguard.select(
+            connection=connection,
+            table=User,
+            model=UserRead,
+            use_sqlrules=False,
+        )
+
+
+def test_adaptation_failure_preserves_source_identity() -> None:
+    from rowguard.execution.processor import process_row
+
+    engine = create_engine("sqlite+pysqlite:///:memory:")
+    Base.metadata.create_all(engine)
+    with Session(engine) as session:
+        session.add(User(id=9, name="Ada", age=37))
+        session.commit()
+        user = session.get(User, 9)
+        assert user is not None
+        session.expire(user)
+        plan = rowguard.compile_plan(
+            model=UserRead,
+            table=User,
+            on_reject="collect",
+            use_sqlrules=False,
+        )
+        processed = process_row(row=user, index=0, plan=plan)
+        assert processed.rejected is not None
+        assert processed.rejected.adaptation_error is not None
+        assert processed.rejected.source_identity == {"id": 9}

@@ -40,10 +40,10 @@ extracted. Relationships are never traversed. Rejected rows may include
 
 | Knob | Default | Notes |
 | --- | --- | --- |
-| `orm_validation` | `"mapping"` | `"from_attributes"` opts into `model_validate(..., from_attributes=True)` after unloaded checks |
+| `orm_validation` | `"mapping"` | `"from_attributes"` opts into `model_validate(..., from_attributes=True)` after unloaded checks. Cannot combine with `attribute_map`. |
 | `unloaded_attributes` | `"error"` | Only supported value in 0.5 — deferred/expired attrs raise `RowAdaptationError` |
-| `attribute_map` | `None` | Model field → entity attribute (entity results only) |
-| `field_map` | `None` | Model field → result key (projected rows) |
+| `attribute_map` | `None` | Model field → entity attribute (entity results only; requires `orm_validation="mapping"`) |
+| `field_map` | `None` | Model field → result key (projected rows only) |
 
 Multi-entity or entity+scalar shapes raise at plan time — project explicitly.
 

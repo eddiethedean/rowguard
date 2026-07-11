@@ -10,6 +10,7 @@ from pydantic import BaseModel
 from rowguard.diagnostics import Diagnostic
 from rowguard.errors import QueryExecutionError, RowGuardError
 from rowguard.execution.context import SyncExecutionContext
+from rowguard.execution.guards import require_session_for_entity_plan
 from rowguard.execution.observer import StreamObserver
 from rowguard.execution.processor import process_row
 from rowguard.execution.state import MutableStatistics
@@ -231,6 +232,7 @@ class StreamResult(Generic[T]):
             raise wrapped from error
 
     def _execute_statement(self) -> Any:
+        require_session_for_entity_plan(self._plan, session=self._context.session)
         statement = self._plan.statement
         options: dict[str, Any] = {}
         if self._streaming.stream_results:

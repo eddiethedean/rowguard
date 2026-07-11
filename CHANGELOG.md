@@ -20,6 +20,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Examples: `orm_projected.py`, `orm_entity.py`, `sqlmodel_basic.py`
 - User guide: [ORM and SQLModel](docs/guides/orm-sqlmodel.md)
 
+### Changed
+
+- Require `sqlrules>=1.0.0,<2` (SQLRules 1.0 stable Application API)
+
+### Fixed
+
+- `attribute_map` cannot be combined with `from_attributes` (plan-time error)
+- Entity-shaped selects require `Session` / `AsyncSession` (not bare `Connection`)
+- Model-only default/optional fields no longer force entity `getattr` failures
+- Synonyms are not treated as permanently unloaded when the target column is loaded
+- Joined-inheritance `column_map` membership uses full mapper columns
+- Select passed as `source=` is treated as the statement (no raw SA crash)
+- `_table_column_names` uses `selected_columns` for Selects (no SelectBase.c warning)
+- `field_map` rejected on entity shapes; relationships rejected at plan time
+- Adaptation failures preserve best-effort `source_identity`
+- Plan cache distinguishes `diagnostics.enabled`
+
 ### Notes
 
 - Prefer column projections for strict read-contract validation
@@ -175,6 +192,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - ORM / SQLModel integrations
 - Callback and quarantine rejection policies
 
+[0.5.0]: https://github.com/eddiethedean/rowguard/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/eddiethedean/rowguard/compare/v0.3.1...v0.4.0
 [0.3.1]: https://github.com/eddiethedean/rowguard/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/eddiethedean/rowguard/compare/v0.2.0...v0.3.0

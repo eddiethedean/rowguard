@@ -56,7 +56,7 @@ Use `aselect` / `astream` with `AsyncSession`, or stream large results without b
 :link: project/supported
 :link-type: doc
 
-0.4 vs planned 0.5/0.6 features. Prefer this page over design drafts in the sidebar.
+0.5 vs planned 0.6+ features. Prefer this page over design drafts in the sidebar.
 
 +++
 **Supported vs planned →**
@@ -78,7 +78,7 @@ Pages under **Future / design** describe planned work. They are **not shipped** 
 
 ```{raw} html
 <div class="rg-callout">
-  <strong>Requires</strong> Python {{ python_min }}, Pydantic v2, SQLAlchemy 2.x, and SQLRules ≥0.4.
+  <strong>Requires</strong> Python {{ python_min }}, Pydantic v2, SQLAlchemy 2.x, and SQLRules ≥1.0.
   Async extras: <code>pip install "rowguard[async]"</code>.
   SQLModel: <code>pip install "rowguard[sqlmodel]"</code>.
 </div>

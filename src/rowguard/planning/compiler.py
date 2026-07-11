@@ -18,6 +18,7 @@ from rowguard.integrations.sqlalchemy_orm import (
     is_mapped_class,
     is_relationship_attr,
     mapped_columns,
+    scalar_attr_keys,
     single_entity_class,
 )
 from rowguard.integrations.sqlmodel import is_sqlmodel_table
@@ -54,6 +55,11 @@ def _table_column_names(source: Any) -> dict[str, Any]:
         return {col.name: col for col in source.columns}
     if is_sqlmodel_table(source) or is_mapped_class(source):
         return mapped_columns(source)
+    if is_select(source):
+        try:
+            return {col.key: col for col in source.selected_columns}
+        except Exception:
+            return {}
     columns = getattr(source, "c", None) or getattr(source, "columns", None)
     if columns is None:
         return {}
@@ -213,7 +219,8 @@ class QueryPlanner(Generic[T]):
                 id(compiled_rules) if compiled_rules is not None else None,
                 _source_fingerprint(request.pushdown.source),
                 request.validation.strict,
-                request.validation.from_attributes,
+                request.adapter.orm_validation,
+                request.diagnostics.enabled,
                 request.rejection.policy,
             )
         )
@@ -245,6 +252,15 @@ class QueryPlanner(Generic[T]):
             raise PlanningError(
                 f"Unsupported unloaded_attributes: {request.adapter.unloaded_attributes!r}. "
                 "Supported in 0.5: error",
+                stage="adapter",
+            )
+        if (
+            request.adapter.attribute_map is not None
+            and request.adapter.orm_validation == "from_attributes"
+        ):
+            raise PlanningError(
+                "attribute_map cannot be combined with orm_validation='from_attributes'; "
+                "use orm_validation='mapping' when remapping entity attributes",
                 stage="adapter",
             )
 
@@ -318,6 +334,9 @@ class QueryPlanner(Generic[T]):
             return request.statement
         if resolved is None or resolved.selectable is None:
             raise PlanningError("No selectable source available", stage="statement")
+        # A Select passed as source= is already the statement.
+        if resolved.kind == "select" and is_select(resolved.selectable):
+            return resolved.selectable
         return build_select(resolved.selectable)
 
     def _plan_pushdown(
@@ -493,6 +512,15 @@ class QueryPlanner(Generic[T]):
                     stage="adapter",
                     execution_id=execution_id,
                 )
+            if field_map:
+                raise PlanningError(
+                    "field_map is only valid for projected column results; "
+                    "use attribute_map for single-entity ORM selects",
+                    stage="adapter",
+                    execution_id=execution_id,
+                )
+
+            known_attrs = scalar_attr_keys(entity_cls)
             if attribute_map:
                 for attr_name in attribute_map.values():
                     if is_relationship_attr(entity_cls, attr_name):
@@ -502,20 +530,38 @@ class QueryPlanner(Generic[T]):
                             stage="adapter",
                             execution_id=execution_id,
                         )
-            expected = (
-                tuple(attribute_map.keys())
-                if attribute_map
-                else tuple(sorted(_model_field_names(request.model)))
-            )
+                    if attr_name not in known_attrs:
+                        raise PlanningError(
+                            f"attribute_map target {attr_name!r} is not a mapped "
+                            f"scalar attribute on {entity_cls.__name__}",
+                            stage="adapter",
+                            execution_id=execution_id,
+                        )
+                expected = tuple(attribute_map.keys())
+                planned_attrs = dict(attribute_map)
+            else:
+                field_names = sorted(_model_field_names(request.model))
+                for field_name in field_names:
+                    if is_relationship_attr(entity_cls, field_name):
+                        raise PlanningError(
+                            f"Model field {field_name!r} matches ORM relationship "
+                            f"on {entity_cls.__name__}; RowGuard does not traverse "
+                            "relationships — remove the field or use a projection",
+                            stage="adapter",
+                            execution_id=execution_id,
+                        )
+                expected = tuple(field_names)
+                planned_attrs = {name: name for name in expected}
+
             return AdapterPlan(
                 adapter=ORMEntityAdapter(
                     attribute_keys=expected,
-                    attribute_map=attribute_map,
+                    attribute_map=planned_attrs if attribute_map else None,
                     mapped_class=entity_cls,
                     unloaded_attributes=request.adapter.unloaded_attributes,
                     orm_validation=orm_validation,
                 ),
-                field_map=dict(field_map) if field_map else None,
+                field_map=None,
                 attribute_map=dict(attribute_map) if attribute_map else None,
                 expected_keys=expected,
                 result_shape="entity",
@@ -559,12 +605,10 @@ class QueryPlanner(Generic[T]):
         *,
         adapter_plan: AdapterPlan,
     ) -> ValidationPlan[T]:
+        # Single source of truth: AdapterConfig.orm_validation.
         from_attributes = (
             adapter_plan.result_shape == "entity"
-            and (
-                adapter_plan.orm_validation == "from_attributes"
-                or request.validation.from_attributes
-            )
+            and adapter_plan.orm_validation == "from_attributes"
         )
         return ValidationPlan(
             validator=PydanticValidator(

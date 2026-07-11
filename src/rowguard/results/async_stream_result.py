@@ -11,6 +11,7 @@ from rowguard.diagnostics import Diagnostic
 from rowguard.errors import QueryExecutionError, RowGuardError
 from rowguard.execution.async_ import aclose_result
 from rowguard.execution.context import AsyncExecutionContext
+from rowguard.execution.guards import require_session_for_entity_plan
 from rowguard.execution.observer import StreamObserver
 from rowguard.execution.processor import process_row
 from rowguard.execution.state import MutableStatistics
@@ -230,6 +231,7 @@ class AsyncStreamResult(Generic[T]):
             raise wrapped from error
 
     async def _stream_statement(self) -> Any:
+        require_session_for_entity_plan(self._plan, session=self._context.session)
         statement = self._plan.statement
         options: dict[str, Any] = {}
         if self._streaming.stream_results:

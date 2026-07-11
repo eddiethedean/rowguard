@@ -1,6 +1,6 @@
 # REJECTION_POLICIES.md
 
-:::{admonition} Status note (0.4.0)
+:::{admonition} Status note (0.5.0)
 :class: tip
 
 **Shipped today:** `raise`, `collect`, `skip`.  

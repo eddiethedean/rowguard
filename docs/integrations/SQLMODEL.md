@@ -186,7 +186,7 @@ Query:
 ```python
 result = rowguard.select(
     session=session,
-    entity=UserTable,
+    table=UserTable,
     model=UserRead,
     on_reject="collect",
 )
@@ -214,7 +214,7 @@ class UserRead(SQLModel):
 ```python
 result = rowguard.select(
     session=session,
-    entity=UserTable,
+    table=UserTable,
     model=UserRead,
 )
 ```
@@ -235,7 +235,7 @@ and target:
 ```python
 result = rowguard.select(
     session=session,
-    entity=UserTable,
+    table=UserTable,
     model=UserTable,
 )
 ```
@@ -271,7 +271,7 @@ from sqlmodel import Session
 with Session(engine) as session:
     result = rowguard.select(
         session=session,
-        entity=UserTable,
+        table=UserTable,
         model=UserRead,
     )
 ```
@@ -589,10 +589,15 @@ The nested adapter can produce:
 RowGuard should block accidental lazy loading by default in entity-validation
 workflows.
 
-Potential policy:
+Shipped in 0.5:
 
 ```python
-unloaded_attributes="error"  # recommended
+unloaded_attributes="error"  # only supported value
+```
+
+Design / future (not shipped):
+
+```python
 unloaded_attributes="load"
 unloaded_attributes="omit"
 ```
@@ -678,7 +683,7 @@ RowGuard targets `UserRead`:
 ```python
 result = rowguard.select(
     session=session,
-    entity=UserTable,
+    table=UserTable,
     model=UserRead,
 )
 ```
@@ -786,7 +791,7 @@ Example:
 ```python
 result = rowguard.select(
     session=session,
-    entity=UserTable,
+    table=UserTable,
     model=UserRead,
     on_reject="collect",
 )
@@ -817,7 +822,14 @@ Reasons:
 - Serialization can expose internal or sensitive data.
 - Large entity graphs increase memory use.
 
-Recommended defaults:
+Recommended defaults (shipped behavior):
+
+```python
+# Live entities are not retained on RejectedRow by default.
+# Primary-key identity is exposed as RejectedRow.source_identity.
+```
+
+Design / future knobs (not shipped):
 
 ```python
 retain_raw_entity=False
@@ -927,7 +939,7 @@ RowGuard's async API should support compatible `AsyncSession` instances:
 ```python
 result = await rowguard.aselect(
     session=async_session,
-    entity=UserTable,
+    table=UserTable,
     model=UserRead,
 )
 ```
@@ -949,7 +961,7 @@ RowGuard should support streaming SQLModel query results.
 ```python
 with rowguard.stream(
     session=session,
-    entity=UserTable,
+    table=UserTable,
     model=UserRead,
     on_reject="callback",
 ) as stream:
@@ -1029,7 +1041,7 @@ a complete query-execution discipline.
 ```python
 result = rowguard.select(
     session=session,
-    entity=UserTable,
+    table=UserTable,
     model=UserRead,
     on_reject="collect",
 )
@@ -1086,7 +1098,7 @@ result = rowguard.execute(
 ```python
 result = rowguard.select(
     session=session,
-    entity=UserTable,
+    table=UserTable,
     model=UserRead,
     pushdown="disabled",
 )
@@ -1097,7 +1109,7 @@ result = rowguard.select(
 ```python
 result = rowguard.select(
     session=session,
-    entity=UserTable,
+    table=UserTable,
     model=UserRead,
     orm_validation="from_attributes",
     unloaded_attributes="error",

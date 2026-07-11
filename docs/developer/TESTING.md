@@ -5,12 +5,12 @@
 :::{admonition} Current vs target matrix
 :class: tip
 
-**Current 0.4 CI focus:** SQLAlchemy Core, sync + async (sqlite / aiosqlite),
-buffered + streaming, rejection policies `raise` / `collect` / `skip`.
+**Current 0.5 CI focus:** SQLAlchemy Core + ORM/SQLModel, sync + async
+(sqlite / aiosqlite), buffered + streaming, rejection policies
+`raise` / `collect` / `skip`.
 
-ORM, SQLModel, callback, and quarantine coverage are **target** layers for later
-milestones—not required to land Core PRs today. See
-[Supported vs planned](../project/supported.md).
+Callback and quarantine coverage are **target** layers for later
+milestones. See [Supported vs planned](../project/supported.md).
 :::
 
 ## Purpose

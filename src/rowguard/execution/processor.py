@@ -7,6 +7,10 @@ from typing import Generic, TypeVar
 from pydantic import BaseModel
 
 from rowguard.errors import RowAdaptationError
+from rowguard.integrations.sqlalchemy_orm import (
+    entity_source_identity,
+    extract_entity,
+)
 from rowguard.planning.execution_plan import ExecutionPlan
 from rowguard.rejection.base import RejectionDecision
 from rowguard.results.rejected_row import RejectedRow
@@ -25,6 +29,16 @@ class ProcessedRow(Generic[T]):
     rejection_time_ns: int = 0
     validated: bool = False
     raise_error: BaseException | None = None
+
+
+def _best_effort_source_identity(row: object) -> dict[str, object] | None:
+    try:
+        entity = extract_entity(row)
+        if entity is None:
+            return None
+        return entity_source_identity(entity)
+    except Exception:
+        return None
 
 
 def process_row(
@@ -49,6 +63,7 @@ def process_row(
             validation_error=None,
             adaptation_error=error,
             raw_row=row,
+            source_identity=_best_effort_source_identity(row),
         )
         return _handle_rejection(
             plan,
@@ -71,6 +86,7 @@ def process_row(
             validation_error=None,
             adaptation_error=wrapped,
             raw_row=row,
+            source_identity=_best_effort_source_identity(row),
         )
         return _handle_rejection(
             plan,

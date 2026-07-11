@@ -15,8 +15,8 @@ How maintainers cut a RowGuard release.
 6. Tag and push:
 
 ```bash
-git tag -a v0.4.0 -m "v0.4.0"
-git push origin v0.4.0
+git tag -a v0.5.0 -m "v0.5.0"
+git push origin v0.5.0
 ```
 
 7. GitHub Actions (`.github/workflows/release.yml`) builds and publishes to PyPI

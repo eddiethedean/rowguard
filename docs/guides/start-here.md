@@ -41,7 +41,7 @@ Nothing is silently dropped.
 - Python {{ python_min }}
 - Pydantic v2
 - SQLAlchemy 2.x
-- SQLRules ≥ 0.4
+- SQLRules ≥ 1.0
 
 Optional: `pip install "rowguard[async]"` for `sqlite+aiosqlite` and async APIs.
 
