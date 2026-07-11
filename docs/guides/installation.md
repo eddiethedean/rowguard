@@ -15,16 +15,21 @@
 pip install rowguard
 ```
 
-Async extras (aiosqlite + greenlet):
+### Extras matrix
+
+| Extra | Install | Purpose |
+| --- | --- | --- |
+| *(none)* | `pip install rowguard` | Sync Core / ORM (SQLRules included) |
+| `async` | `pip install "rowguard[async]"` | aiosqlite + greenlet for async APIs / tests |
+| `sqlmodel` | `pip install "rowguard[sqlmodel]"` | SQLModel table-source support |
+| `postgresql` | `pip install "rowguard[postgresql]"` | Optional `psycopg` driver |
+| `dev` | `pip install "rowguard[dev]"` | pytest, ruff, mypy, coverage, … |
+| `docs` | `pip install "rowguard[docs]"` | Sphinx documentation build |
+
+Full contributor install (matches CI / `make install`):
 
 ```bash
-pip install "rowguard[async]"
-```
-
-SQLModel table-source support:
-
-```bash
-pip install "rowguard[sqlmodel]"
+pip install -e ".[dev,async,sqlmodel]"
 ```
 
 With [uv](https://github.com/astral-sh/uv):
@@ -78,7 +83,9 @@ Opens at `docs/_build/html/index.html`.
 
 - **Resolver conflicts on Pydantic v1** — RowGuard requires Pydantic v2.
 - **`ModuleNotFoundError: aiosqlite`** — install `rowguard[async]`.
+- **`ModuleNotFoundError: sqlmodel`** — install `rowguard[sqlmodel]` (SQLModel tests skip without it).
 - **Old sqlrules** — upgrade to `sqlrules>=1.0.0,<2`.
+- **Partial extras + full `pytest`** — use `make install` (or `.[dev,async,sqlmodel]`) for the complete suite.
 
 ## Next
 

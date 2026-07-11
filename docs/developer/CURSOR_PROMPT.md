@@ -1,5 +1,12 @@
 # Cursor Build Prompt
 
+:::{admonition} Maintainer tooling
+:class: note
+
+This page is for maintainers and coding agents. End users should start at
+[Start here](../guides/start-here.md).
+:::
+
 Build and maintain RowGuard from the architecture and specification documents in
 this repository.
 

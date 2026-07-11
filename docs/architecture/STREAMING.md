@@ -79,7 +79,7 @@ Bare ``for model in stream`` also closes the underlying result when the loop
 ends or breaks. Prefer the context manager when combining early exit with
 post-stream inspection of ``statistics`` / ``rejected``.
 
-Shipped async API (0.4.0):
+Shipped async API (0.4.0+; ORM async in 0.5):
 
 ```python
 async with rowguard.astream(...) as stream:

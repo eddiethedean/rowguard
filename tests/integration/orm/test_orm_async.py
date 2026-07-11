@@ -3,6 +3,9 @@ from __future__ import annotations
 from typing import Annotated
 
 import pytest
+
+pytest.importorskip("aiosqlite")
+
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine

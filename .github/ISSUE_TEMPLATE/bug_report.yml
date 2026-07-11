@@ -1,0 +1,48 @@
+name: Bug report
+description: Report incorrect behavior in shipped RowGuard APIs
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for filing a bug. Please confirm the behavior is on the
+        [shipped surface](https://rowguard.readthedocs.io/en/latest/project/supported.html)
+        (0.5.x), not a deferred design doc.
+  - type: input
+    id: version
+    attributes:
+      label: RowGuard version
+      placeholder: "0.5.0"
+    validations:
+      required: true
+  - type: input
+    id: python
+    attributes:
+      label: Python / SQLAlchemy / Pydantic versions
+      placeholder: "3.12 / 2.0.x / 2.x"
+    validations:
+      required: true
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: Expected vs actual behavior.
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Minimal reproduction
+      description: Smallest script or test that shows the bug.
+      render: python
+    validations:
+      required: true
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Checklist
+      options:
+        - label: I searched existing issues
+          required: true
+        - label: This is not a security report (those go to SECURITY.md)
+          required: true

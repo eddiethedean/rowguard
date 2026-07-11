@@ -2,13 +2,26 @@
 
 Validate every row from a SQLAlchemy Core table against a Pydantic model.
 
-:::{admonition} About `use_sqlrules=False`
+:::{admonition} Defaults vs this walkthrough
 :class: tip
 
-This walkthrough disables SQLRules pushdown so invalid rows reach Pydantic and
-appear in `rejected`. Production defaults use `use_sqlrules=True`. See
-[SQLRules pushdown](sqlrules-pushdown.md).
+**Default** `use_sqlrules=True` pushes supported constraints into SQL. Invalid
+candidates may never be fetched, so `rejected` can be empty. That is pushdown
+filtering—not silent drop-after-fetch. See [SQLRules pushdown](sqlrules-pushdown.md).
+
+This walkthrough uses `use_sqlrules=False` so every fetched row is classified by
+Pydantic and invalid rows appear in `rejected` under `on_reject="collect"`
+(the API default policy is `"raise"`).
 :::
+
+## Default path (SQLRules on)
+
+```python
+result = rowguard.select(session=session, table=users, model=UserRead)
+# Only rows that passed pushdown + Pydantic. rejected is often ().
+```
+
+## Explicit rejection path
 
 ```python
 from typing import Annotated

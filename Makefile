@@ -1,7 +1,7 @@
 .PHONY: install test lint format type benchmark docs all
 
 install:
-	python -m pip install -e ".[dev,async]"
+	python -m pip install -e ".[dev,async,sqlmodel]"
 
 test:
 	pytest --cov=rowguard --cov-report=term-missing
@@ -13,7 +13,7 @@ format:
 	ruff format .
 
 type:
-	mypy src/rowguard
+	mypy src/rowguard tests/typing
 
 benchmark:
 	pytest benchmarks --benchmark-only

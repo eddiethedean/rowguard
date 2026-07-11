@@ -1,5 +1,12 @@
 # PARTIAL_VALIDATION.md
 
+:::{admonition} Status: not shipped in 0.5.0
+:class: caution
+
+This document is a **design draft**. Partial / subset-field validation is **not**
+available in the current release. See [Supported vs planned](../project/supported.md).
+:::
+
 # RowGuard Partial Validation
 
 ## Purpose

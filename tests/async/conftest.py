@@ -4,6 +4,9 @@ from collections.abc import AsyncIterator
 from typing import Annotated
 
 import pytest
+
+pytest.importorskip("aiosqlite")
+
 from pydantic import BaseModel, Field
 from sqlalchemy import Column, Integer, MetaData, String, Table
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncSession, create_async_engine

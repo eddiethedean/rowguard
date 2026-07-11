@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Documentation
+    url: https://rowguard.readthedocs.io/en/latest/
+    about: Guides, API reference, and supported vs planned.
+  - name: Security vulnerability
+    url: https://github.com/eddiethedean/rowguard/security/advisories/new
+    about: Report security issues privately (see SECURITY.md).

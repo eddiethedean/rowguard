@@ -3,6 +3,9 @@ from __future__ import annotations
 from typing import Annotated
 
 import pytest
+
+pytest.importorskip("sqlmodel")
+
 from pydantic import BaseModel, Field
 from sqlalchemy import create_engine, select
 from sqlmodel import Field as SQLField

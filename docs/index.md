@@ -8,8 +8,8 @@
     <span class="rg-badge">Sync · Async · Streaming</span>
   </div>
   <p class="rg-hero-kicker">RowGuard documentation</p>
-  <p class="rg-hero-title">Validation-first queries that never silently drop bad rows</p>
-  <p class="rg-lead">Execute SQLAlchemy queries, validate every returned row against a Pydantic model, and handle rejections explicitly—with the same semantics for buffered, streaming, sync, and async APIs.</p>
+  <p class="rg-hero-title">Validation-first queries with explicit accepted or rejected rows</p>
+  <p class="rg-lead">Execute SQLAlchemy queries, validate every returned row against a Pydantic model, and handle rejections explicitly—with the same semantics for buffered, streaming, sync, and async APIs. Default SQLRules pushdown may filter invalid candidates in SQL before fetch.</p>
   <p>
     <a class="rg-hero-cta" href="guides/start-here.html">Start here →</a>
     <a class="rg-hero-cta rg-hero-cta--ghost" href="guides/quickstart.html" style="margin-left:0.75rem">Quickstart</a>
@@ -70,10 +70,12 @@ Use `aselect` / `astream` with `AsyncSession`, or stream large results without b
 Keep your `Table` / `Select` and sessions. RowGuard adds planning, validation, and rejection handling around them—it does not replace SQLAlchemy.
 :::
 
-:::{admonition} Design docs in the sidebar
+:::{admonition} Design docs
 :class: caution
 
-Pages under **Future / design** describe planned work. They are **not shipped** in {{ release }}. See [Supported vs planned](project/supported.md).
+Long design notes are **hidden from the main sidebar** (still built and linked).
+Pages under **Future / design** describe planned work and are **not shipped** in
+{{ release }}. See [Supported vs planned](project/supported.md).
 :::
 
 ```{raw} html
@@ -115,8 +117,8 @@ examples/index
 :maxdepth: 1
 :caption: Reference
 
-api
-reference/api
+API guide <api>
+Python autodoc <reference/api>
 reference/errors
 spec
 ```
@@ -131,7 +133,8 @@ guides/design-philosophy
 
 ```{toctree}
 :maxdepth: 1
-:caption: Design notes (advanced)
+:caption: Maintainer design notes
+:hidden:
 
 architecture/EXECUTION_PIPELINE
 architecture/QUERY_ENGINE
@@ -192,4 +195,5 @@ developer/CONTRIBUTING
 developer/TESTING
 developer/BENCHMARKS
 developer/MILESTONES
+developer/CURSOR_PROMPT
 ```

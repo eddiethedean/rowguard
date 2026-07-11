@@ -31,7 +31,7 @@ available in {{ release }}.
 
 Design drafts (not all policies are shipped—see banners on those pages):
 
-- [Rejection policies architecture](../rejection/REJECTION_POLICIES.md) (design notes; 0.4 ships raise/collect/skip)
+- [Rejection policies architecture](../rejection/REJECTION_POLICIES.md) (design notes; 0.5 ships raise/collect/skip)
 - [Rejection handling](../rejection/REJECTION_HANDLING.md)
 - [Diagnostics](../rejection/DIAGNOSTICS.md)
 - Callbacks / quarantine: **not shipped** — [Supported vs planned](../project/supported.md)

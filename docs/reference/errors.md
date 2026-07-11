@@ -1,6 +1,6 @@
 # Error catalog
 
-Public exceptions raised by RowGuard 0.4. All inherit from `RowGuardError`
+Public exceptions raised by RowGuard {{ release }}. All inherit from `RowGuardError`
 unless noted.
 
 | Exception | When it is raised |

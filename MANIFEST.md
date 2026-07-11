@@ -11,7 +11,7 @@ Included files for RowGuard **0.5.0**:
 - `API.md`
 - `ARCHITECTURE.md`
 - `CHANGELOG.md`
-- `CURSOR_PROMPT.md`
+- `docs/developer/CURSOR_PROMPT.md`
 - `LICENSE`
 - `Makefile`
 - `README.md`

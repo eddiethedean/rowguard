@@ -252,6 +252,7 @@ def test_sqlmodel_helpers_without_package() -> None:
 
 
 def test_sqlmodel_table_helpers_with_model() -> None:
+    pytest.importorskip("sqlmodel")
     from sqlmodel import Field as SQLField
     from sqlmodel import SQLModel
 

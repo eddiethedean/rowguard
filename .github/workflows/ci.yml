@@ -40,6 +40,7 @@ jobs:
       - name: Example smoke
         run: |
           python examples/basic.py
+          python examples/sqlrules_default.py
           python examples/streaming.py
           python examples/async_basic.py
           python examples/orm_projected.py

@@ -203,7 +203,7 @@ Async tests should verify:
 
 # MVP Scope
 
-**Shipped in 0.4.0:**
+**Shipped in 0.4.0+ (async since 0.4; ORM in 0.5):**
 
 - AsyncSession / AsyncConnection
 - aselect()

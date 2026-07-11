@@ -42,13 +42,11 @@ Contributions may include:
 - Documentation
 - Tests
 - Performance improvements
-- Dialect support
-- Plugin implementations
 - Examples
 - Type improvements
 - Security reports
 
-Small, focused pull requests are preferred.
+Small, focused pull requests on the shipped surface are preferred.
 
 ---
 
@@ -732,17 +730,18 @@ project's goals and evidence.
 
 # Good First Contributions
 
-Examples:
+Prefer work on the **shipped** 0.5 surface:
 
-- Improve documentation examples
-- Add missing rejection tests
-- Add typing tests
+- Improve documentation examples and guides
+- Add missing rejection / streaming / ORM tests
+- Add typing stubs under `tests/typing`
 - Add SQLite edge-case tests
-- Improve diagnostics
-- Add plugin conformance fixtures
-- Add benchmark reporting
-- Add reflected-table examples
+- Improve diagnostics messages (without leaking row values)
 - Improve error messages without exposing values
+- Benchmark reporting for existing APIs
+
+Avoid starting with deferred milestones (plugins, reflection, raw SQL helpers,
+callback/quarantine) unless an issue explicitly scopes that work.
 
 ---
 

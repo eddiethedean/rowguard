@@ -4,16 +4,17 @@
 
 | Version | Supported |
 | --- | --- |
-| 0.4.x | Yes |
+| 0.5.x | Yes |
+| 0.4.x | Best-effort only |
 | < 0.4 | Best-effort only |
 
 ## Reporting a vulnerability
 
 Please **do not** open a public GitHub issue for security vulnerabilities.
 
-Email the maintainers via the contact listed on the
-[GitHub repository](https://github.com/eddiethedean/rowguard) (or open a
-**private** security advisory on GitHub if enabled for the repo).
+Prefer a **[private GitHub security advisory](https://github.com/eddiethedean/rowguard/security/advisories/new)**
+on this repository. If that is unavailable, contact the repository owner via
+the email listed on their [GitHub profile](https://github.com/eddiethedean).
 
 Include:
 
@@ -32,6 +33,9 @@ RowGuard validates and classifies query rows. It does not replace:
 - Network TLS configuration
 - Secrets management
 - Application-level access control
+
+SQLRules pushdown is an optimization, not an authorization boundary. Express
+tenant and access filters as explicit SQL / `where=` clauses.
 
 Rejection payloads may contain row data. Treat `collect` / future quarantine
 sinks as sensitive and apply redaction policies appropriate to your environment.

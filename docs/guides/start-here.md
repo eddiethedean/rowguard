@@ -7,7 +7,9 @@ Every row returned from a query is classified as either:
 1. An accepted Pydantic model, or
 2. A rejected row with structured diagnostics
 
-Nothing is silently dropped.
+Nothing that reaches validation is silently dropped. (Default SQLRules pushdown
+may filter invalid candidates in SQL before fetch—see
+[SQLRules pushdown](sqlrules-pushdown.md).)
 
 ## Choose a path
 
@@ -19,7 +21,7 @@ Nothing is silently dropped.
 | Stream large result sets | [Streaming guide](streaming.md) |
 | Use AsyncSession | [Async guide](async.md) |
 | See what is shipped vs planned | [Supported vs planned](../project/supported.md) |
-| Look up function signatures | [API reference](../reference/api.md) · [API guide](../api.md) |
+| Look up function signatures | [API guide](../api.md) · [Python autodoc](../reference/api.md) |
 | Understand internals | [Architecture overview](../architecture_overview.md) |
 
 ## What RowGuard is

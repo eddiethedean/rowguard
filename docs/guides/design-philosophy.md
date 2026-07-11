@@ -24,7 +24,7 @@ validation fails. They never change whether a row is valid.
 Async changes I/O, not validation rules. `aselect` / `astream` mirror sync
 behavior; only DB awaits are asynchronous.
 
-## Explicit non-goals (0.4)
+## Explicit non-goals (current release)
 
 | Non-goal | Alternative |
 | --- | --- |

@@ -1,12 +1,15 @@
 # Examples
 
-Runnable scripts from the repository. Copy them locally or browse on GitHub:
+Runnable scripts from the repository. See also
+[`examples/README.md`](https://github.com/eddiethedean/rowguard/blob/main/examples/README.md)
+for extras and `table=` vs `source=`.
 
-- [examples/basic.py](https://github.com/eddiethedean/rowguard/blob/main/examples/basic.py) — buffered `select` with `collect`
+- [examples/basic.py](https://github.com/eddiethedean/rowguard/blob/main/examples/basic.py) — buffered `select` with `collect` (`use_sqlrules=False`)
+- [examples/sqlrules_default.py](https://github.com/eddiethedean/rowguard/blob/main/examples/sqlrules_default.py) — default SQLRules pushdown (`use_sqlrules=True`)
 - [examples/streaming.py](https://github.com/eddiethedean/rowguard/blob/main/examples/streaming.py) — sync `stream`
 - [examples/async_basic.py](https://github.com/eddiethedean/rowguard/blob/main/examples/async_basic.py) — `aselect` + `astream` (needs `rowguard[async]`)
-- [examples/orm_projected.py](https://github.com/eddiethedean/rowguard/blob/main/examples/orm_projected.py) — ORM column projection
-- [examples/orm_entity.py](https://github.com/eddiethedean/rowguard/blob/main/examples/orm_entity.py) — single-entity ORM select
+- [examples/orm_projected.py](https://github.com/eddiethedean/rowguard/blob/main/examples/orm_projected.py) — ORM column projection (`source=User`)
+- [examples/orm_entity.py](https://github.com/eddiethedean/rowguard/blob/main/examples/orm_entity.py) — single-entity ORM select (`table=User`)
 - [examples/sqlmodel_basic.py](https://github.com/eddiethedean/rowguard/blob/main/examples/sqlmodel_basic.py) — SQLModel table source (needs `rowguard[sqlmodel]`)
 
 ## Run locally
@@ -14,6 +17,7 @@ Runnable scripts from the repository. Copy them locally or browse on GitHub:
 ```bash
 pip install -e ".[dev,async,sqlmodel]"
 python examples/basic.py
+python examples/sqlrules_default.py
 python examples/streaming.py
 python examples/async_basic.py
 python examples/orm_projected.py

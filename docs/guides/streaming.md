@@ -37,7 +37,7 @@ async with rowguard.astream(
 - Prefer `with` / `async with` so cursors close on break, cancel, or error.
 - Re-entering a closed stream raises `QueryExecutionError`.
 - Raise-policy rejections update statistics before the exception is raised.
-- Observers (`StreamObserver` / `BaseStreamObserver`) are sync callables in 0.4.
+- Observers (`StreamObserver` / `BaseStreamObserver`) are sync callables in 0.5.
 
 ## Options
 
