@@ -1,6 +1,6 @@
 # Best practices
 
-Practical guidance for 0.5.0 Core and ORM usage.
+Practical guidance for 0.6.0 Core, ORM, and rejection-platform usage.
 
 ## Prefer projection models
 
@@ -14,8 +14,12 @@ Smaller models are faster to validate and clearer contracts.
 | Tests / strict APIs | `raise` (default) |
 | ETL / audit of bad rows | `collect` |
 | Best-effort streaming | `skip` |
+| Metrics / conditional stop | `callback` |
+| Durable bad-row handoff | `quarantine` |
+| Ops visibility without retention | `log` |
 
-Remember: under `skip`, `has_rejections` may be true while `rejected` is empty.
+Remember: under `skip` / `log` / receipt-only quarantine, `has_rejections` may
+be true while `rejected` is empty.
 See [Rejection policies](rejection-policies.md).
 
 ## Know your pushdown setting

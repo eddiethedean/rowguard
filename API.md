@@ -45,14 +45,20 @@ Parameters:
 -   `column_map`: optional model-field → SQLAlchemy column mapping for SQLRules
     (validated at plan time when source columns are known)
 -   `parameters`: optional bound parameters forwarded to SQLAlchemy
--   `on_reject`: `raise`, `collect`, or `skip`
-    (`callback` / `quarantine` / `log` planned for later releases)
+-   `on_reject`: `raise`, `collect`, `skip`, `log`, `callback`, or `quarantine`
+-   `reject_callback`: required when `on_reject="callback"`
+-   `quarantine`: provider required when `on_reject="quarantine"`
+    (`InMemoryQuarantineProvider` / `JSONLQuarantineProvider`)
+-   `max_rejections` / `max_rejection_rate`: optional thresholds (strict `>`)
+-   `callback_values` / `quarantine_values` / `redact_fields`: handoff redaction
+-   `quarantine_retention`: `receipt` (default) / `rejection` / `both` / `none`
+-   `quarantine_transaction`: must be `"separate"` in 0.6
 -   `use_sqlrules`: enable SQLRules constraint pushdown (default `True`)
 -   `compiled_rules`: optional precompiled SQLRules dict; when set, skips live
     `sqlrules.compile` and only flattens via `sqlrules.where`
 -   `strict`: optional Pydantic strict-mode flag for validation planning
 -   `orm_validation`: `"mapping"` (default) or `"from_attributes"` (entity selects)
--   `unloaded_attributes`: `"error"` only in 0.5 (deferred/expired attrs fail adaptation)
+-   `unloaded_attributes`: `"error"` only (deferred/expired attrs fail adaptation)
 
 Returns:
 
@@ -202,11 +208,12 @@ result.valid_count
 result.rejected_count   # retained rejections only (0 under skip)
 result.has_rejections   # True if any row was rejected (including skip)
 result.is_clean
+result.quarantine_receipts
 ```
 
 `has_rejections` is based on `statistics.rows_rejected`, not on whether
-rejected rows were retained. Under `skip`, `has_rejections` may be `True`
-while `rejected` is empty.
+rejected rows were retained. Under `skip` / `log` / receipt-only quarantine,
+`has_rejections` may be `True` while `rejected` is empty.
 
 `execution_time` is end-to-end wall time in seconds (statement fetch plus
 validation for SQL paths; full processing for `validate_rows`).
@@ -216,6 +223,7 @@ validation for SQL paths; full processing for `validate_rows`).
 ``` python
 stream.statistics
 stream.rejected
+stream.quarantine_receipts
 stream.diagnostics
 stream.statement
 stream.closed
@@ -261,7 +269,7 @@ rejected.source_identity   # optional PK dict on ORM entity adaptation failures
 -   `rejection_time_ns`
 -   `rejection_rate` (property: `rows_rejected / rows_read`, or `0.0` when empty)
 
-## Async API (0.5.0)
+## Async API (0.4+)
 
 Requires an async SQLAlchemy engine/driver (e.g. `sqlite+aiosqlite`). Install
 with `pip install rowguard[async]`.
@@ -298,15 +306,23 @@ cancellation).
 
 Only database I/O is awaited. Pydantic validation runs synchronously on the
 event loop and can block under heavy models. Stream observers remain sync
-callables. Async reject handlers (callback / quarantine) are not shipped in
-0.5.0.
+callables. Async APIs accept `async def` reject callbacks and async quarantine
+providers (`awrite` / `aclose`).
 
-## ORM / SQLModel (0.5.0)
+## ORM / SQLModel (0.5+)
 
 - Prefer projected selects: `execute(statement=select(User.id, ...), source=User)`
 - Entity selects: `select(table=User, ...)` uses `ORMEntityAdapter`
 - `RejectedRow.source_identity` may hold a primary-key dict
 - Install SQLModel support with `pip install rowguard[sqlmodel]`
+
+## Rejection platform (0.6.0)
+
+- `on_reject="callback"` / `"quarantine"` / `"log"`
+- `CallbackDecision`, `CallbackContext`, typed `CallbackError`
+- `QuarantineRecord` / `QuarantineReceipt` on `QueryResult.quarantine_receipts`
+- Thresholds raise `RejectionThresholdError` with `last_rejection`
+- Guide: [Rejection policies](https://rowguard.readthedocs.io/en/latest/guides/rejection-policies.html)
 
 ## Errors
 
@@ -318,7 +334,9 @@ Common public exceptions (see the [error catalog](https://rowguard.readthedocs.i
 -   `RowValidationError` — raise-policy validation failure (`model`, `validation_error`, `row_index`)
 -   `RowAdaptationError` — raise-policy adaptation failure (`model`, `row_index`)
 -   `ResultAssemblyError` — internal consistency failure (rare)
--   `RejectHandlerError` — reserved for 0.6 callback/quarantine failures
+-   `RejectHandlerError` — base for callback/quarantine handler failures
+-   `CallbackError` / `QuarantineError` — handler failures (`rejected`, cause)
+-   `RejectionThresholdError` — `max_rejections` / `max_rejection_rate` exceeded
 
 Default `use_sqlrules=True` may filter invalid candidates in SQL so they never
 appear in `rejected`. See the SQLRules pushdown guide on the docs site.

@@ -5,13 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.6.0] — 2026-07-10
+## [0.6.0] — 2026-07-11
 
 ### Upgrade notes
 
 - New rejection policies: `callback`, `quarantine`, and `log`.
 - Optional `max_rejections` / `max_rejection_rate` on all entry points.
-- See [Rejection policies](docs/guides/rejection-policies.md).
+- `quarantine_transaction` must be `"separate"`; other values raise at
+  config/plan time.
+- See [Rejection policies](docs/guides/rejection-policies.md) and
+  [Upgrading](docs/guides/upgrading.md).
 
 ### Added
 
@@ -25,12 +28,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Rejection thresholds (`max_rejections`, `max_rejection_rate`)
 - Async reject handlers for `aselect` / `aexecute` / `astream`
 - `QueryResult.quarantine_receipts` / stream receipt accessors
+- Typed errors: `CallbackError`, `QuarantineError`, `RejectionThresholdError`
 - Examples: `callback_basic.py`, `quarantine_jsonl.py`
 
 ### Notes
 
 - Provider failures never invent accepted models; original rejections are preserved
 - Reference providers do not write through the source Session
+- `on_callback_error="reject_handler"` aliases `"raise"` for MVP
 - Plugin registration of quarantine providers remains deferred to 0.7.0
 
 ## [0.5.0] — 2026-07-10

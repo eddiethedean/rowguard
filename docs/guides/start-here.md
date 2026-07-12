@@ -15,7 +15,7 @@ fetch. Use `use_sqlrules=False` when you need invalid rows classified in Python.
 | --- | --- |
 | Install and run a first query | [Installation](installation.md) → [Quickstart](quickstart.md) |
 | Understand why `rejected` can be empty | [SQLRules pushdown](sqlrules-pushdown.md) |
-| Upgrade from 0.4 | [Upgrading](upgrading.md) |
+| Upgrade from a prior minor | [Upgrading](upgrading.md) |
 | Rejection policies | [Rejection policies](rejection-policies.md) |
 | Stream large results | [Streaming](streaming.md) |
 | AsyncSession | [Async](async.md) |
@@ -27,11 +27,11 @@ fetch. Use `use_sqlrules=False` when you need invalid rows classified in Python.
 
 - Orchestration over SQLAlchemy + SQLRules + Pydantic
 - Sync and async buffered and streaming APIs
-- Policies: `raise` (default), `collect`, `skip`
+- Policies: `raise` (default), `collect`, `skip`, `log`, `callback`, `quarantine`
 
 ## What RowGuard is not
 
-- Not an ORM / persistence layer (it **validates ORM and SQLModel reads** in 0.5)
+- Not an ORM / persistence layer (it **validates ORM and SQLModel reads**)
 - Not a migration tool
 - Not a replacement for SQLAlchemy or Pydantic
 - Not an authorization system (pushdown is not a security boundary)

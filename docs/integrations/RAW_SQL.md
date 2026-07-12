@@ -1,6 +1,6 @@
 # RAW_SQL.md
 
-:::{admonition} Status: not shipped in 0.5.0
+:::{admonition} Status: not shipped in 0.6.0
 :class: warning
 
 This document is a **design draft for 0.8.0**. First-class raw `text()` support

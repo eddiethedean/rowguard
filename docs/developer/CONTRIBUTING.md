@@ -747,7 +747,7 @@ project's goals and evidence.
 
 # Good First Contributions
 
-Prefer work on the **shipped** 0.5 surface:
+Prefer work on the **shipped** 0.6 surface:
 
 - Improve documentation examples and guides
 - Add missing rejection / streaming / ORM tests
@@ -757,8 +757,8 @@ Prefer work on the **shipped** 0.5 surface:
 - Improve error messages without exposing values
 - Benchmark reporting for existing APIs
 
-Avoid starting with deferred milestones (plugins, reflection, raw SQL helpers,
-callback/quarantine) unless an issue explicitly scopes that work.
+Avoid starting with deferred milestones (plugins, reflection, raw SQL helpers)
+unless an issue explicitly scopes that work.
 
 ---
 

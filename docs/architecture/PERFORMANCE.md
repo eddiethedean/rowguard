@@ -4,7 +4,7 @@
 :class: tip
 
 Practical tips: [Performance guide](../guides/performance.md). This page is a
-long maintainer design note; plugin/quarantine sections are not shipped in 0.5.0.
+long maintainer design note; plugin-system sections remain deferred to 0.7.0.
 :::
 
 # RowGuard Performance Architecture

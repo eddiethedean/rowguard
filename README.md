@@ -129,7 +129,9 @@ and the [FAQ](https://rowguard.readthedocs.io/en/latest/guides/faq.html).
 | `validate_rows` | Validate mappings without SQL |
 | `compile_plan` | Inspect an `ExecutionPlan` without executing |
 
-Rejection policies: `raise` (default), `collect`, `skip`.
+Rejection policies: `raise` (default), `collect`, `skip`, `log`, `callback`,
+`quarantine` — plus optional `max_rejections` / `max_rejection_rate`. See
+[Rejection policies](https://rowguard.readthedocs.io/en/latest/guides/rejection-policies.html).
 
 **`table=` vs `source=`:** use `table=` on `select`/`stream` (Core `Table` or
 mapped class). On `execute` with a projected `Select`, pass the mapped class as
