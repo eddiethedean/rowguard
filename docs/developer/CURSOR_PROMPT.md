@@ -10,11 +10,11 @@ This page is for maintainers and coding agents. End users should start at
 Build and maintain RowGuard from the architecture and specification documents in
 this repository.
 
-**Current shipped release: 0.5.0.** Do not re-implement 0.1.0–0.5.0 unless fixing
-regressions. Next planned milestone is **0.6.0 (rejection platform)** per
+**Current shipped release: 0.6.0.** Do not re-implement 0.1.0–0.6.0 unless fixing
+regressions. Next planned milestone is **0.7.0 (plugin system)** per
 `ROADMAP.md` and `docs/developer/MILESTONES.md` (MILESTONES is authoritative).
 
-## Shipped through 0.5.0
+## Shipped through 0.6.0
 
 - Python 3.10+
 - Pydantic v2
@@ -30,13 +30,14 @@ regressions. Next planned milestone is **0.6.0 (rejection platform)** per
 - `StreamObserver` / `BaseStreamObserver` progress hooks (sync callables)
 - Staged immutable `ExecutionPlan` and planning configs
 - `QueryResult[T]`, `RejectedRow` (incl. `source_identity`), `QueryStatistics`
-- Rejection policies: `raise`, `collect`, `skip`
+- Rejection policies: `raise`, `collect`, `skip`, `log`, `callback`, `quarantine`
+- Async reject callbacks / quarantine providers on async APIs
+- Rejection thresholds (`max_rejections`, `max_rejection_rate`)
 - Mapping-based validation default; opt-in `orm_validation="from_attributes"`
 - Unloaded/deferred attribute errors (`unloaded_attributes="error"`)
 - SQLite unit + integration + streaming + async + ORM/SQLModel tests
 - Strict typing
 - No ORM relationship traversal
-- No async callback/quarantine handlers until 0.6.0
 
 ## Implementation Rules
 
@@ -56,5 +57,5 @@ regressions. Next planned milestone is **0.6.0 (rejection platform)** per
 
 ## Next Deliverable
 
-Implement the **0.6.0 rejection platform** (callback / quarantine) required by
-`docs/developer/MILESTONES.md`, without breaking 0.5.x call sites.
+Implement the **0.7.0 plugin system** required by
+`docs/developer/MILESTONES.md`, without breaking 0.6.x call sites.

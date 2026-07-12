@@ -50,13 +50,13 @@ def main() -> None:
                 quarantine=provider,
                 use_sqlrules=False,
             )
+        # RowGuard closes the provider when the select finishes.
         print(
             f"accepted={result.valid_count} "
             f"receipts={len(result.quarantine_receipts)} "
             f"path={path}"
         )
     finally:
-        provider.close()
         if path.exists():
             path.unlink()
 

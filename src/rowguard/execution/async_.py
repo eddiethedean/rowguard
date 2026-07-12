@@ -91,7 +91,11 @@ class AsyncExecutionEngine(Generic[T]):
             primary_error = QueryExecutionError(f"Query execution failed: {exc}")
             raise primary_error from exc
         finally:
-            await self._aclose_policy(plan)
+            try:
+                await self._aclose_policy(plan)
+            except Exception:
+                if primary_error is None:
+                    raise
             if result is not None:
                 try:
                     await aclose_result(result)
@@ -117,13 +121,14 @@ class AsyncExecutionEngine(Generic[T]):
             state.quarantine_receipts.append(processed.quarantine_receipt)
         if processed.retain_rejection and processed.rejected is not None:
             state.rejected.append(processed.rejected)
+        # Policy errors (raise / callback / quarantine) take precedence over thresholds.
+        if processed.raise_error is not None:
+            raise processed.raise_error
         check_rejection_thresholds(
             statistics=state.statistics,
             rejection_plan=state.plan.rejection_plan,
             last_rejection=processed.rejected,
         )
-        if processed.raise_error is not None:
-            raise processed.raise_error
         return processed.continue_processing
 
     async def _execute_statement(

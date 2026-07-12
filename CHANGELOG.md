@@ -38,6 +38,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `on_callback_error="reject_handler"` aliases `"raise"` for MVP
 - Plugin registration of quarantine providers remains deferred to 0.7.0
 
+### Fixed
+
+- Policy errors (`raise` / callback / quarantine) take precedence over rejection
+  thresholds
+- Buffered engines no longer let rejection-policy `close()` mask primary errors
+- Redacted handoffs strip `validation_error` inputs and redact `source_identity`
+- `AsyncStreamResult` falls back to sync iteration like `AsyncExecutionEngine`
+- Async callable objects (`async def __call__`) are detected as async callbacks
+- Invalid / policy-irrelevant rejection knobs raise `ConfigurationError`
+- Plan cache keys include rejection thresholds, redaction, and handler identity
+
 ## [0.5.0] — 2026-07-10
 
 ### Upgrade notes

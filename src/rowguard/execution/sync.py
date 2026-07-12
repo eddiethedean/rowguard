@@ -54,7 +54,11 @@ class SyncExecutionEngine(Generic[T]):
             primary_error = QueryExecutionError(f"Query execution failed: {exc}")
             raise primary_error from exc
         finally:
-            self._close_policy(plan)
+            try:
+                self._close_policy(plan)
+            except Exception:
+                if primary_error is None:
+                    raise
             if result is not None:
                 close = getattr(result, "close", None)
                 if callable(close):
@@ -77,6 +81,7 @@ class SyncExecutionEngine(Generic[T]):
         state = ExecutionState(plan=plan)
         state.diagnostics.extend(plan.diagnostics)
         started = perf_counter_ns()
+        primary_error: BaseException | None = None
 
         try:
             for index, row in enumerate(rows):
@@ -94,8 +99,18 @@ class SyncExecutionEngine(Generic[T]):
                 )
                 if not self._consume_processed(state, processed):
                     break
+        except RowGuardError as exc:
+            primary_error = exc
+            raise
+        except Exception as exc:
+            primary_error = QueryExecutionError(f"Query execution failed: {exc}")
+            raise primary_error from exc
         finally:
-            self._close_policy(plan)
+            try:
+                self._close_policy(plan)
+            except Exception:
+                if primary_error is None:
+                    raise
             state.statistics.execution_time_ns = perf_counter_ns() - started
 
         return self._assemble(state)
@@ -116,13 +131,14 @@ class SyncExecutionEngine(Generic[T]):
             state.quarantine_receipts.append(processed.quarantine_receipt)
         if processed.retain_rejection and processed.rejected is not None:
             state.rejected.append(processed.rejected)
+        # Policy errors (raise / callback / quarantine) take precedence over thresholds.
+        if processed.raise_error is not None:
+            raise processed.raise_error
         check_rejection_thresholds(
             statistics=state.statistics,
             rejection_plan=state.plan.rejection_plan,
             last_rejection=processed.rejected,
         )
-        if processed.raise_error is not None:
-            raise processed.raise_error
         return processed.continue_processing
 
     def _execute_statement(

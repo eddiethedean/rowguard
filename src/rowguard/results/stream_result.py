@@ -211,6 +211,12 @@ class StreamResult(Generic[T]):
                 self._notify_rejected(processed.rejected)
                 if processed.retain_rejection:
                     self._rejected.append(processed.rejected)
+            if processed.raise_error is not None:
+                self._primary_error = processed.raise_error
+                self._notify_failed(processed.raise_error)
+                self.close()
+                raise processed.raise_error
+
             try:
                 check_rejection_thresholds(
                     statistics=self._statistics,
@@ -222,12 +228,6 @@ class StreamResult(Generic[T]):
                 self._notify_failed(error)
                 self.close()
                 raise
-
-            if processed.raise_error is not None:
-                self._primary_error = processed.raise_error
-                self._notify_failed(processed.raise_error)
-                self.close()
-                raise processed.raise_error
 
             if not processed.continue_processing:
                 self._finish_complete()

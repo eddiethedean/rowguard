@@ -83,12 +83,19 @@ result = rowguard.select(
 )
 for receipt in result.quarantine_receipts:
     print(receipt.location)
-provider.close()
 ```
+
+RowGuard closes the quarantine provider when the execution finishes (including
+on error). Construct a new provider for each call; do not rely on reusing a
+closed instance.
 
 Reference providers never use the source Session. In 0.6,
 `quarantine_transaction` must be `"separate"` (the default); other values raise
 `ConfigurationError`.
+
+`redact_fields` / `callback_values` / `quarantine_values` apply to **handoff**
+payloads (callback arguments and quarantine records). They strip raw
+`validation_error` inputs and redact overlapping `source_identity` keys.
 
 ## Thresholds
 

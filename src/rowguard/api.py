@@ -52,6 +52,11 @@ from rowguard.validation.pydantic import PydanticValidator
 T = TypeVar("T", bound=BaseModel)
 
 _SUPPORTED_POLICIES = ("raise", "collect", "skip", "callback", "quarantine", "log")
+_CALLBACK_ERROR_MODES = frozenset({"raise", "log", "continue", "reject_handler"})
+_CALLBACK_VALUES_MODES = frozenset({"full", "redacted", "metadata_only"})
+_QUARANTINE_ERROR_MODES = frozenset({"raise", "collect", "log"})
+_QUARANTINE_VALUES_MODES = frozenset({"full", "redacted", "metadata_only"})
+_QUARANTINE_RETENTION_MODES = frozenset({"receipt", "rejection", "both", "none"})
 
 
 def _rejection_config(
@@ -83,6 +88,46 @@ def _rejection_config(
         raise ConfigurationError("reject_callback= is only valid with on_reject='callback'")
     if on_reject != "quarantine" and quarantine is not None:
         raise ConfigurationError("quarantine= is only valid with on_reject='quarantine'")
+    if on_reject != "callback":
+        if on_callback_error != "raise":
+            raise ConfigurationError(
+                "on_callback_error= is only valid with on_reject='callback'"
+            )
+        if callback_values != "full":
+            raise ConfigurationError(
+                "callback_values= is only valid with on_reject='callback'"
+            )
+    if on_reject != "quarantine":
+        if on_quarantine_error != "raise":
+            raise ConfigurationError(
+                "on_quarantine_error= is only valid with on_reject='quarantine'"
+            )
+        if quarantine_values != "full":
+            raise ConfigurationError(
+                "quarantine_values= is only valid with on_reject='quarantine'"
+            )
+        if quarantine_retention != "receipt":
+            raise ConfigurationError(
+                "quarantine_retention= is only valid with on_reject='quarantine'"
+            )
+    if on_reject not in {"callback", "quarantine"} and redact_fields is not None:
+        raise ConfigurationError(
+            "redact_fields= is only valid with on_reject='callback' or 'quarantine'"
+        )
+    if on_callback_error not in _CALLBACK_ERROR_MODES:
+        raise ConfigurationError(f"Unsupported on_callback_error: {on_callback_error!r}")
+    if callback_values not in _CALLBACK_VALUES_MODES:
+        raise ConfigurationError(f"Unsupported callback_values: {callback_values!r}")
+    if on_quarantine_error not in _QUARANTINE_ERROR_MODES:
+        raise ConfigurationError(
+            f"Unsupported on_quarantine_error: {on_quarantine_error!r}"
+        )
+    if quarantine_values not in _QUARANTINE_VALUES_MODES:
+        raise ConfigurationError(f"Unsupported quarantine_values: {quarantine_values!r}")
+    if quarantine_retention not in _QUARANTINE_RETENTION_MODES:
+        raise ConfigurationError(
+            f"Unsupported quarantine_retention: {quarantine_retention!r}"
+        )
     if max_rejections is not None and max_rejections < 0:
         raise ConfigurationError("max_rejections must be >= 0")
     if max_rejection_rate is not None and not (0.0 <= max_rejection_rate <= 1.0):
@@ -149,7 +194,7 @@ def _build_request(
     if unloaded_attributes != "error":
         raise ConfigurationError(
             f"Unsupported unloaded_attributes: {unloaded_attributes!r}. "
-            "Supported in 0.5: error"
+            "Supported: error"
         )
     return QueryRequest(
         model=model,

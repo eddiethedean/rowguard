@@ -1,10 +1,10 @@
 # VALIDATION_ERRORS.md
 
 :::{admonition} Design notes
-:class: caution
+:class: tip
 
-See the [error catalog](../reference/errors.md) for shipped exceptions.
-Callback/quarantine error flows below are **not shipped** in 0.5.0.
+See the [error catalog](../reference/errors.md) for shipped exceptions including
+`CallbackError`, `QuarantineError`, and `RejectionThresholdError` (0.6.0).
 :::
 
 # RowGuard Validation Errors

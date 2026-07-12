@@ -3,8 +3,9 @@
 :::{admonition} Design notes — read the user guide first
 :class: caution
 
-Shipped result types are documented in the [API guide](../api.md). Callback /
-quarantine / log result shapes described below are **not shipped** in 0.5.0.
+Shipped result types are documented in the [API guide](../api.md). Prefer
+[Rejection policies](../guides/rejection-policies.md) for callback / quarantine /
+log behavior shipped in 0.6.0; sections below may include deferred design detail.
 :::
 
 # RowGuard Result Object

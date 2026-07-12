@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import inspect
 from dataclasses import replace
 from typing import Any, Generic, TypeVar
 from uuid import uuid4
@@ -115,6 +116,16 @@ def _rebinding_cached_plan(
     )
 
 
+def _is_async_callable(callback: Any) -> bool:
+    if inspect.iscoroutinefunction(callback):
+        return True
+    try:
+        call = type(callback).__call__
+    except AttributeError:
+        return False
+    return inspect.iscoroutinefunction(call)
+
+
 class QueryPlanner(Generic[T]):
     def __init__(
         self,
@@ -204,6 +215,8 @@ class QueryPlanner(Generic[T]):
         field_map = tuple(sorted((request.adapter.field_map or {}).items()))
         attribute_map = tuple(sorted((request.adapter.attribute_map or {}).items()))
         compiled_rules = request.pushdown.compiled_rules
+        rejection = request.rejection
+        redact = tuple(sorted(rejection.redact_fields or ()))
         return repr(
             (
                 request.model.__module__,
@@ -222,9 +235,24 @@ class QueryPlanner(Generic[T]):
                 id(compiled_rules) if compiled_rules is not None else None,
                 _source_fingerprint(request.pushdown.source),
                 request.validation.strict,
-                request.adapter.orm_validation,
                 request.diagnostics.enabled,
-                request.rejection.policy,
+                rejection.policy,
+                rejection.on_callback_error,
+                rejection.callback_values,
+                rejection.on_quarantine_error,
+                rejection.quarantine_values,
+                rejection.quarantine_retention,
+                rejection.quarantine_transaction,
+                redact,
+                rejection.max_rejections,
+                rejection.max_rejection_rate,
+                rejection.async_execution,
+                id(rejection.reject_callback)
+                if rejection.reject_callback is not None
+                else None,
+                id(rejection.quarantine_provider)
+                if rejection.quarantine_provider is not None
+                else None,
             )
         )
 
@@ -286,7 +314,7 @@ class QueryPlanner(Generic[T]):
         if request.adapter.unloaded_attributes != "error":
             raise PlanningError(
                 f"Unsupported unloaded_attributes: {request.adapter.unloaded_attributes!r}. "
-                "Supported in 0.5: error",
+                "Supported: error",
                 stage="adapter",
             )
         if (
@@ -663,14 +691,13 @@ class QueryPlanner(Generic[T]):
         execution_id: str,
     ) -> RejectionPlan:
         del execution_id
-        import inspect
 
         cfg = request.rejection
         policy: RejectionPolicy
         if cfg.policy == "callback":
             callback = cfg.reject_callback
             assert callback is not None
-            is_async = inspect.iscoroutinefunction(callback)
+            is_async = _is_async_callable(callback)
             if is_async and not cfg.async_execution:
                 raise PlanningError(
                     "Async reject_callback requires aselect/aexecute/astream",

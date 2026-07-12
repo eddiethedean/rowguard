@@ -87,7 +87,7 @@ def build_quarantine_record(
         row_index=rejected.index,
         model_name=rejected.model.__name__,
         source_identity=(
-            dict(rejected.source_identity) if rejected.source_identity is not None else None
+            dict(prepared.source_identity) if prepared.source_identity is not None else None
         ),
         rejection_type=_rejection_type(rejected),
         mapping=dict(mapping) if mapping is not None else None,
@@ -107,7 +107,7 @@ def _retention_flags(retention: str) -> tuple[bool, bool]:
         return True, True
     if retention == "none":
         return False, False
-    return False, True
+    raise ValueError(f"Unsupported quarantine_retention: {retention!r}")
 
 
 class QuarantinePolicy:

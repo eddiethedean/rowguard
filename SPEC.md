@@ -2,7 +2,7 @@
 
 # RowGuard Specification
 
-## Current as of 0.5.0
+## Current as of 0.6.0
 
 Shipped surface:
 
@@ -14,7 +14,9 @@ Shipped surface:
 - SQLModel table sources (`rowguard[sqlmodel]`)
 - `orm_validation`, `unloaded_attributes`, `attribute_map`, `source_identity`
 - SQLRules pushdown (`use_sqlrules`, optional `compiled_rules`)
-- Rejection policies: `raise`, `collect`, `skip`
+- Rejection policies: `raise`, `collect`, `skip`, `log`, `callback`, `quarantine`
+- Callback / quarantine async reject handlers on async APIs
+- Rejection thresholds (`max_rejections`, `max_rejection_rate`)
 - Staged immutable `ExecutionPlan` and planning diagnostics
 - Streaming options: `yield_per`, `StreamObserver` / `BaseStreamObserver`
   (observers remain sync callables)
@@ -22,8 +24,8 @@ Shipped surface:
 Deferred (not available yet):
 
 - Nested relationship / graph validation — later
-- Async callback / quarantine reject handlers — 0.6.0
-- Callback / quarantine / log rejection policies — 0.6.0
+- Plugin system / provider registries — 0.7.0
+- Reflection / raw `text()` — 0.8.0
 
 ## Overview
 
@@ -209,7 +211,7 @@ because Pydantic remains the source of truth.
 
 # Supported Inputs
 
-Current (0.5.0):
+Current (0.6.0):
 
 -   SQLAlchemy Table
 -   SQLAlchemy Select

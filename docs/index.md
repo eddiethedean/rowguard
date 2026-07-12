@@ -180,9 +180,16 @@ integrations/WHY_NOT_SQLMODEL
 
 integrations/REFLECTION
 integrations/RAW_SQL
+architecture/PLUGIN_SYSTEM
+```
+
+```{toctree}
+:maxdepth: 1
+:caption: Rejection design notes (shipped 0.6)
+:hidden:
+
 rejection/CALLBACKS
 rejection/QUARANTINE
-architecture/PLUGIN_SYSTEM
 ```
 
 ```{toctree}

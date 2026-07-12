@@ -20,7 +20,7 @@ class ORMEntityAdapter:
 
     Never traverses relationships. Unloaded or deferred attributes raise
     ``RowAdaptationError`` when ``unloaded_attributes=\"error\"`` (the only
-    supported policy in 0.5).
+    supported policy).
     """
 
     def __init__(
@@ -34,7 +34,7 @@ class ORMEntityAdapter:
     ) -> None:
         if unloaded_attributes != "error":
             raise ValueError(
-                "unloaded_attributes must be 'error' in RowGuard 0.5 "
+                "unloaded_attributes must be 'error' "
                 f"(got {unloaded_attributes!r})"
             )
         self._attribute_keys = tuple(attribute_keys)

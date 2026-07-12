@@ -738,3 +738,110 @@ async def test_astream_connection_stream_path() -> None:
     async with stream:
         models = [m async for m in stream]
     assert len(models) == 1
+
+
+@pytest.mark.asyncio
+async def test_astream_callback_stop_and_quarantine(tmp_path, async_session, users_table) -> None:
+    from pathlib import Path
+
+    from rowguard import CallbackDecision, JSONLQuarantineProvider
+    from rowguard.errors import RejectionThresholdError
+
+    async def stop_cb(rejected: object, context: object) -> CallbackDecision:
+        del rejected, context
+        return CallbackDecision.STOP
+
+    async with rowguard.astream(
+        session=async_session,
+        table=users_table,
+        model=UserRead,
+        on_reject="callback",
+        reject_callback=stop_cb,
+        use_sqlrules=False,
+    ) as stream:
+        models = [m async for m in stream]
+    assert len(models) == 1  # first valid, then STOP on Legacy
+    assert stream.statistics.rows_rejected == 1
+    assert stream.rejected == ()
+
+    path = Path(tmp_path) / "async_rejects.jsonl"
+    provider = JSONLQuarantineProvider(path)
+    async with rowguard.astream(
+        session=async_session,
+        table=users_table,
+        model=UserRead,
+        on_reject="quarantine",
+        quarantine=provider,
+        use_sqlrules=False,
+    ) as qstream:
+        qmodels = [m async for m in qstream]
+    assert len(qmodels) == 2
+    assert len(qstream.quarantine_receipts) == 1
+    assert path.read_text(encoding="utf-8").strip()
+    with pytest.raises(RuntimeError, match="closed"):
+        provider.write(object(), object())  # type: ignore[arg-type]
+
+    with pytest.raises(RejectionThresholdError):
+        async with rowguard.astream(
+            session=async_session,
+            table=users_table,
+            model=UserRead,
+            on_reject="skip",
+            max_rejections=0,
+            use_sqlrules=False,
+        ) as bad:
+            _ = [m async for m in bad]
+
+
+@pytest.mark.asyncio
+async def test_astream_sync_iter_fallback() -> None:
+    """execute()-only handles without __aiter__ still stream via sync iter."""
+
+    class ExecOnly:
+        async def execute(self, statement, params=None):
+            del statement, params
+
+            class Rows:
+                def __iter__(self_inner):
+                    return iter(
+                        [
+                            {"id": 1, "name": "Ada", "age": 37},
+                            {"id": 2, "name": "Legacy", "age": 12},
+                        ]
+                    )
+
+                async def close(self_inner) -> None:
+                    return None
+
+            return Rows()
+
+    stream = AsyncStreamResult(
+        plan=_plan(policy="skip"),
+        context=AsyncExecutionContext(session=ExecOnly()),
+        streaming=StreamingConfig(stream_results=False),
+    )
+    async with stream:
+        models = [m async for m in stream]
+    assert [m.id for m in models] == [1]
+    assert stream.statistics.rows_rejected == 1
+
+
+@pytest.mark.asyncio
+async def test_async_callable_object_callback(async_session, users_table) -> None:
+    from rowguard import CallbackDecision
+
+    class Handler:
+        async def __call__(self, rejected: object, context: object) -> CallbackDecision:
+            del rejected, context
+            return CallbackDecision.RETAIN
+
+    result = await rowguard.aselect(
+        session=async_session,
+        table=users_table,
+        model=UserRead,
+        on_reject="callback",
+        reject_callback=Handler(),
+        use_sqlrules=False,
+    )
+    assert result.valid_count == 2
+    assert len(result.rejected) == 1

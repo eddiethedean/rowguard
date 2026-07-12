@@ -50,6 +50,7 @@ class AsyncStreamResult(Generic[T]):
         self._diagnostics: list[Diagnostic] = list(plan.diagnostics)
         self._db_result: Any | None = None
         self._row_aiter: AsyncIterator[Any] | None = None
+        self._row_iter: Any | None = None
         self._index = 0
         self._started = False
         self._closed = False
@@ -143,6 +144,7 @@ class AsyncStreamResult(Generic[T]):
                 close_error = error
             self._db_result = None
             self._row_aiter = None
+            self._row_iter = None
 
         aclose = getattr(self._plan.rejection_policy, "aclose", None)
         if callable(aclose):
@@ -170,10 +172,17 @@ class AsyncStreamResult(Generic[T]):
         if self._closed:
             raise StopAsyncIteration
 
-        assert self._row_aiter is not None
+        assert self._row_aiter is not None or self._row_iter is not None
         while True:
             try:
-                row = await self._row_aiter.__anext__()
+                if self._row_aiter is not None:
+                    row = await self._row_aiter.__anext__()
+                else:
+                    assert self._row_iter is not None
+                    try:
+                        row = next(self._row_iter)
+                    except StopIteration as stop:
+                        raise StopAsyncIteration from stop
             except StopAsyncIteration:
                 await self._finish_complete()
                 raise
@@ -218,6 +227,12 @@ class AsyncStreamResult(Generic[T]):
                 self._notify_rejected(processed.rejected)
                 if processed.retain_rejection:
                     self._rejected.append(processed.rejected)
+            if processed.raise_error is not None:
+                self._primary_error = processed.raise_error
+                self._notify_failed(processed.raise_error)
+                await self.close()
+                raise processed.raise_error
+
             try:
                 check_rejection_thresholds(
                     statistics=self._statistics,
@@ -229,12 +244,6 @@ class AsyncStreamResult(Generic[T]):
                 self._notify_failed(error)
                 await self.close()
                 raise
-
-            if processed.raise_error is not None:
-                self._primary_error = processed.raise_error
-                self._notify_failed(processed.raise_error)
-                await self.close()
-                raise processed.raise_error
 
             if not processed.continue_processing:
                 await self._finish_complete()
@@ -263,7 +272,13 @@ class AsyncStreamResult(Generic[T]):
         self._notify_start()
         try:
             self._db_result = await self._stream_statement()
-            self._row_aiter = self._db_result.__aiter__()
+            if hasattr(self._db_result, "__aiter__"):
+                self._row_aiter = self._db_result.__aiter__()
+                self._row_iter = None
+            else:
+                # CursorResult / sync-iterable fallback (parity with AsyncExecutionEngine).
+                self._row_aiter = None
+                self._row_iter = iter(self._db_result)
         except RowGuardError as error:
             self._primary_error = error
             self._notify_failed(error)

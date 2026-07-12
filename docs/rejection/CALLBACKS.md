@@ -186,16 +186,16 @@ class CallbackDecision(Enum):
 
 ## CONTINUE
 
-Continue processing with the normal rejection policy.
+For standalone `on_reject="callback"` in 0.6, continue processing **without**
+retaining the rejected row (same retention outcome as `DROP` / `None`).
 
 ## STOP
 
-Stop execution after the current rejection.
+Stop execution after the current rejection without retaining the row.
 
-Buffered execution raises a callback-stop exception or returns a partial result
-only when partial-result behavior is explicitly enabled.
-
-Streaming execution closes the stream and releases resources.
+Streaming execution closes the stream and releases resources. Buffered
+execution returns the accepted rows collected so far (no dedicated stop
+exception in 0.6).
 
 ## RETAIN
 
@@ -206,6 +206,8 @@ Ensure the rejected row is retained in the result or stream summary.
 Do not retain the rejected row after the callback completes.
 
 `DROP` affects retention only. Statistics must still count the rejection.
+In 0.6 standalone callback mode, `DROP`, `CONTINUE`, and `None` are equivalent
+for retention.
 
 ---
 
