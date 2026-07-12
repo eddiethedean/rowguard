@@ -71,5 +71,62 @@ class RejectHandlerError(RowGuardError):
     """A rejection callback or quarantine provider failed."""
 
 
+class CallbackError(RejectHandlerError):
+    """A rejection callback failed or returned an invalid decision."""
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        rejected: Any | None = None,
+        callback: Any | None = None,
+        original_error: BaseException | None = None,
+        callback_index: int | None = None,
+    ) -> None:
+        self.rejected = rejected
+        self.callback = callback
+        self.original_error = original_error
+        self.callback_index = callback_index
+        super().__init__(message)
+
+
+class QuarantineError(RejectHandlerError):
+    """A quarantine provider failed while writing a rejection."""
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        rejected: Any | None = None,
+        provider: Any | None = None,
+        original_error: BaseException | None = None,
+    ) -> None:
+        self.rejected = rejected
+        self.provider = provider
+        self.original_error = original_error
+        super().__init__(message)
+
+
+class RejectionThresholdError(RowGuardError):
+    """Execution stopped because a rejection threshold was exceeded."""
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        rows_read: int,
+        rows_rejected: int,
+        max_rejections: int | None = None,
+        max_rejection_rate: float | None = None,
+        last_rejection: Any | None = None,
+    ) -> None:
+        self.rows_read = rows_read
+        self.rows_rejected = rows_rejected
+        self.max_rejections = max_rejections
+        self.max_rejection_rate = max_rejection_rate
+        self.last_rejection = last_rejection
+        super().__init__(message)
+
+
 class ResultAssemblyError(RowGuardError):
     """An inconsistent public result was about to be created."""

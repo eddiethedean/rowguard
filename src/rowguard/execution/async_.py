@@ -9,8 +9,13 @@ from pydantic import BaseModel
 from rowguard.errors import QueryExecutionError, ResultAssemblyError, RowGuardError
 from rowguard.execution.context import AsyncExecutionContext
 from rowguard.execution.guards import require_session_for_entity_plan
-from rowguard.execution.processor import ProcessedRow, process_row
+from rowguard.execution.processor import (
+    ProcessedRow,
+    aprocess_row,
+    build_rejection_context,
+)
 from rowguard.execution.state import ExecutionState
+from rowguard.execution.thresholds import check_rejection_thresholds
 from rowguard.planning.execution_plan import ExecutionPlan
 from rowguard.results.query_result import QueryResult
 
@@ -47,13 +52,35 @@ class AsyncExecutionEngine(Generic[T]):
             # AsyncResult supports async iteration; CursorResult is sync-iterable.
             if hasattr(result, "__aiter__"):
                 async for row in result:
-                    processed = process_row(row=row, index=index, plan=plan)
+                    rejection_context = build_rejection_context(
+                        plan=plan,
+                        rows_read=state.statistics.rows_read,
+                        rows_accepted=state.statistics.rows_accepted,
+                        rows_rejected=state.statistics.rows_rejected,
+                    )
+                    processed = await aprocess_row(
+                        row=row,
+                        index=index,
+                        plan=plan,
+                        context=rejection_context,
+                    )
                     index += 1
                     if not self._consume_processed(state, processed):
                         break
             else:
                 for row in result:
-                    processed = process_row(row=row, index=index, plan=plan)
+                    rejection_context = build_rejection_context(
+                        plan=plan,
+                        rows_read=state.statistics.rows_read,
+                        rows_accepted=state.statistics.rows_accepted,
+                        rows_rejected=state.statistics.rows_rejected,
+                    )
+                    processed = await aprocess_row(
+                        row=row,
+                        index=index,
+                        plan=plan,
+                        context=rejection_context,
+                    )
                     index += 1
                     if not self._consume_processed(state, processed):
                         break
@@ -64,6 +91,7 @@ class AsyncExecutionEngine(Generic[T]):
             primary_error = QueryExecutionError(f"Query execution failed: {exc}")
             raise primary_error from exc
         finally:
+            await self._aclose_policy(plan)
             if result is not None:
                 try:
                     await aclose_result(result)
@@ -85,8 +113,15 @@ class AsyncExecutionEngine(Generic[T]):
             state.accepted.append(processed.model)
             return True
 
+        if processed.quarantine_receipt is not None:
+            state.quarantine_receipts.append(processed.quarantine_receipt)
         if processed.retain_rejection and processed.rejected is not None:
             state.rejected.append(processed.rejected)
+        check_rejection_thresholds(
+            statistics=state.statistics,
+            rejection_plan=state.plan.rejection_plan,
+            last_rejection=processed.rejected,
+        )
         if processed.raise_error is not None:
             raise processed.raise_error
         return processed.continue_processing
@@ -108,6 +143,15 @@ class AsyncExecutionEngine(Generic[T]):
             return await context.connection.execute(plan.statement)
         raise QueryExecutionError("No session or connection available for execution")
 
+    async def _aclose_policy(self, plan: ExecutionPlan[T]) -> None:
+        aclose = getattr(plan.rejection_policy, "aclose", None)
+        if callable(aclose):
+            await aclose()
+            return
+        close = getattr(plan.rejection_policy, "close", None)
+        if callable(close):
+            close()
+
     def _assemble(self, state: ExecutionState[T]) -> QueryResult[T]:
         stats = state.statistics.snapshot()
         if stats.rows_accepted != len(state.accepted):
@@ -125,4 +169,5 @@ class AsyncExecutionEngine(Generic[T]):
             statistics=stats,
             statement=state.plan.statement,
             diagnostics=tuple(state.diagnostics),
+            quarantine_receipts=tuple(state.quarantine_receipts),
         )

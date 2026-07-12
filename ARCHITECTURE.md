@@ -133,12 +133,13 @@ Shipped policies:
 -   `raise` — stop on first rejection (default)
 -   `collect` — retain `RejectedRow` values
 -   `skip` — count rejections but do not retain them
-
-Callback, quarantine, and log policies are **not shipped** in 0.5. See
-[Supported vs planned](docs/project/supported.md).
+-   `log` — WARNING log; continue without retaining
+-   `callback` — user `reject_callback=` with `CallbackDecision`
+-   `quarantine` — provider write with receipts (in-memory / JSONL)
 
 Every row that reaches validation follows the configured policy. Default
 SQLRules pushdown may filter invalid candidates in SQL before fetch.
+See [Supported vs planned](docs/project/supported.md).
 
 ------------------------------------------------------------------------
 

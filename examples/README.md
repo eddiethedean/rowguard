@@ -11,6 +11,8 @@ python examples/async_basic.py
 python examples/orm_projected.py
 python examples/orm_entity.py
 python examples/sqlmodel_basic.py
+python examples/callback_basic.py
+python examples/quarantine_jsonl.py
 ```
 
 | Script | Extras | Notes |
@@ -22,6 +24,8 @@ python examples/sqlmodel_basic.py
 | `orm_projected.py` | none | Projected ORM `Select` with `source=User` |
 | `orm_entity.py` | none | Entity path with `table=User` on `select` |
 | `sqlmodel_basic.py` | `sqlmodel` | SQLModel table model as `source=` |
+| `callback_basic.py` | none | `on_reject="callback"` with `CallbackDecision.RETAIN` |
+| `quarantine_jsonl.py` | none | `JSONLQuarantineProvider` with receipt retention |
 
 ## `table=` vs `source=`
 

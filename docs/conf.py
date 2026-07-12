@@ -17,8 +17,8 @@ sys.path.insert(0, str(ROOT / "src"))
 project = "RowGuard"
 author = "RowGuard Contributors"
 copyright = f"{datetime.now(tz=timezone.utc).year}, {author}"
-release = "0.5.0"
-version = "0.5"
+release = "0.6.0"
+version = "0.6"
 
 myst_substitutions = {
     "release": release,

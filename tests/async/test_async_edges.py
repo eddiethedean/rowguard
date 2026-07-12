@@ -536,10 +536,10 @@ async def test_astream_process_row_errors(monkeypatch: pytest.MonkeyPatch) -> No
 
     import rowguard.results.async_stream_result as asr
 
-    def boom_row(**_kwargs):
+    async def boom_row(**_kwargs):
         raise RuntimeError("process boom")
 
-    monkeypatch.setattr(asr, "process_row", boom_row)
+    monkeypatch.setattr(asr, "aprocess_row", boom_row)
     stream = AsyncStreamResult(
         plan=_plan(),
         context=AsyncExecutionContext(session=Session()),
@@ -548,10 +548,10 @@ async def test_astream_process_row_errors(monkeypatch: pytest.MonkeyPatch) -> No
         await stream.__anext__()
     assert stream.closed
 
-    def boom_rowguard(**_kwargs):
+    async def boom_rowguard(**_kwargs):
         raise PlanningError("guard boom")
 
-    monkeypatch.setattr(asr, "process_row", boom_rowguard)
+    monkeypatch.setattr(asr, "aprocess_row", boom_rowguard)
     stream2 = AsyncStreamResult(
         plan=_plan(),
         context=AsyncExecutionContext(session=Session()),

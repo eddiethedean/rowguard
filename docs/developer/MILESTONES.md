@@ -210,6 +210,10 @@ Make RowGuard natural in mapped applications.
 
 # 0.6.0 — Rejection Platform
 
+## Status
+
+Shipped.
+
 ## Goal
 
 Expand rejected-row handling into a complete workflow.

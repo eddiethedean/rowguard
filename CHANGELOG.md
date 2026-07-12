@@ -5,6 +5,34 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.0] — 2026-07-10
+
+### Upgrade notes
+
+- New rejection policies: `callback`, `quarantine`, and `log`.
+- Optional `max_rejections` / `max_rejection_rate` on all entry points.
+- See [Rejection policies](docs/guides/rejection-policies.md).
+
+### Added
+
+- `on_reject="callback"` with `reject_callback=` and `CallbackDecision`
+- Structured `CallbackContext` (no live session by default)
+- `on_reject="quarantine"` with `QuarantineRecord` / `QuarantineReceipt`
+- Reference providers: `InMemoryQuarantineProvider`, `JSONLQuarantineProvider`
+- `on_reject="log"` (WARNING log, continue, no retain)
+- Redaction (`callback_values` / `quarantine_values` / `redact_fields`)
+- Quarantine retention (`receipt` / `rejection` / `both` / `none`)
+- Rejection thresholds (`max_rejections`, `max_rejection_rate`)
+- Async reject handlers for `aselect` / `aexecute` / `astream`
+- `QueryResult.quarantine_receipts` / stream receipt accessors
+- Examples: `callback_basic.py`, `quarantine_jsonl.py`
+
+### Notes
+
+- Provider failures never invent accepted models; original rejections are preserved
+- Reference providers do not write through the source Session
+- Plugin registration of quarantine providers remains deferred to 0.7.0
+
 ## [0.5.0] — 2026-07-10
 
 ### Upgrade notes
@@ -197,6 +225,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - ORM / SQLModel integrations
 - Callback and quarantine rejection policies
 
+[0.6.0]: https://github.com/eddiethedean/rowguard/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/eddiethedean/rowguard/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/eddiethedean/rowguard/compare/v0.3.1...v0.4.0
 [0.3.1]: https://github.com/eddiethedean/rowguard/compare/v0.3.0...v0.3.1

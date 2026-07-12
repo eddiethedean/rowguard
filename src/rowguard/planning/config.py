@@ -4,10 +4,16 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any, Literal
 
-RejectionPolicyName = Literal["raise", "collect", "skip"]
+RejectionPolicyName = Literal["raise", "collect", "skip", "callback", "quarantine", "log"]
 DiagnosticsLevel = Literal["off", "summary", "detailed"]
 OrmValidationMode = Literal["mapping", "from_attributes"]
 UnloadedAttributesPolicy = Literal["error"]
+CallbackErrorMode = Literal["raise", "log", "continue", "reject_handler"]
+CallbackValuesMode = Literal["full", "redacted", "metadata_only"]
+QuarantineErrorMode = Literal["raise", "collect", "log"]
+QuarantineValuesMode = Literal["full", "redacted", "metadata_only"]
+QuarantineRetentionMode = Literal["receipt", "rejection", "both", "none"]
+QuarantineTransactionMode = Literal["separate", "same", "external"]
 
 
 @dataclass(frozen=True, slots=True)
@@ -28,6 +34,18 @@ class ValidationConfig:
 @dataclass(frozen=True, slots=True)
 class RejectionConfig:
     policy: RejectionPolicyName = "raise"
+    reject_callback: Any | None = None
+    quarantine_provider: Any | None = None
+    on_callback_error: CallbackErrorMode = "raise"
+    callback_values: CallbackValuesMode = "full"
+    on_quarantine_error: QuarantineErrorMode = "raise"
+    quarantine_values: QuarantineValuesMode = "full"
+    quarantine_retention: QuarantineRetentionMode = "receipt"
+    quarantine_transaction: QuarantineTransactionMode = "separate"
+    redact_fields: frozenset[str] | None = None
+    max_rejections: int | None = None
+    max_rejection_rate: float | None = None
+    async_execution: bool = False
 
 
 @dataclass(frozen=True, slots=True)

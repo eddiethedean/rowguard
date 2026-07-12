@@ -60,11 +60,11 @@ async with rowguard.astream(
 Only database I/O is awaited. Pydantic validation runs synchronously on the
 event loop and can block under heavy models. See [Performance](performance.md).
 
-## Not in 0.5
+## Not in 0.6
 
-- Async callback / quarantine reject handlers (0.6)
 - Thread-pool wrappers around sync APIs
 - Required asyncpg CI matrix (sqlite+aiosqlite is the async CI driver)
+- Plugin-registered quarantine providers (0.7)
 
 ## Related
 

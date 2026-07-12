@@ -4,9 +4,9 @@
 
 | Version | Supported |
 | --- | --- |
-| 0.5.x | Yes (security fixes on a best-effort basis) |
-| 0.4.x | Best-effort only (no committed fix timeline) |
-| < 0.4 | Best-effort only |
+| 0.6.x | Yes (security fixes on a best-effort basis) |
+| 0.5.x | Best-effort only (no committed fix timeline) |
+| < 0.5 | Best-effort only |
 
 **No SLA.** RowGuard is community-maintained under the MIT license. We aim to
 **acknowledge** vulnerability reports within a few business days. Fix timelines

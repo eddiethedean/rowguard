@@ -119,22 +119,19 @@ Resources should be released automatically when the context exits.
 
 # Rejection Handling
 
-Policies remain identical for shipped policies:
+Policies remain identical for sync and async:
 
 - raise
 - collect
 - skip
-
-Deferred to **0.6.0** (same as sync):
-
 - log
 - callback
 - quarantine
 
-Future versions may support asynchronous callbacks:
+Async APIs accept async callbacks / providers:
 
 ```python
-async def handler(rejected):
+async def handler(rejected, context):
     ...
 ```
 
@@ -209,13 +206,13 @@ Async tests should verify:
 - aselect()
 - aexecute()
 - astream() / AsyncStreamResult
-- identical validation semantics (raise / collect / skip)
+- identical validation semantics (raise / collect / skip / log / callback / quarantine)
+- async reject handlers (callback / quarantine)
 - sqlite+aiosqlite driver matrix
 - cancellation closes stream resources
 
 Deferred:
 
-- async reject handlers (callback / quarantine) — 0.6.0
 - adaptive batching
 - resumable async streams
 - asyncpg as a required CI driver

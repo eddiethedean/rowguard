@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "rowguard"
-version = "0.5.0"
+version = "0.6.0"
 description = "Validation-first SQLAlchemy queries with Pydantic row validation."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -94,6 +94,7 @@ exclude_lines = [
   "pragma: no cover",
   "raise NotImplementedError",
   "if TYPE_CHECKING:",
+  "\\.\\.\\.",
 ]
 
 [tool.ruff]

@@ -23,7 +23,6 @@ from rowguard.integrations.sqlalchemy_orm import (
 )
 from rowguard.integrations.sqlmodel import is_sqlmodel_table
 from rowguard.integrations.sqlrules import SQLRulesBridge
-from rowguard.planning.config import RejectionPolicyName
 from rowguard.planning.execution_plan import (
     AdapterPlan,
     ExecutionPlan,
@@ -34,15 +33,19 @@ from rowguard.planning.execution_plan import (
 )
 from rowguard.planning.request import QueryRequest
 from rowguard.rejection.base import RejectionPolicy
+from rowguard.rejection.callback import CallbackPolicy
+from rowguard.rejection.log import LogPolicy
 from rowguard.rejection.policies import CollectPolicy, RaisePolicy, SkipPolicy
+from rowguard.rejection.quarantine import QuarantinePolicy
 from rowguard.validation.pydantic import PydanticValidator
 
 T = TypeVar("T", bound=BaseModel)
 
-_POLICIES: dict[RejectionPolicyName, type[RejectionPolicy]] = {
+_SIMPLE_POLICIES: dict[str, type[RejectionPolicy]] = {
     "raise": RaisePolicy,
     "collect": CollectPolicy,
     "skip": SkipPolicy,
+    "log": LogPolicy,
 }
 
 
@@ -236,10 +239,36 @@ class QueryPlanner(Generic[T]):
                 "Either source (table) or statement is required",
                 stage="request",
             )
-        if request.rejection.policy not in _POLICIES:
+        supported = sorted({*_SIMPLE_POLICIES, "callback", "quarantine"})
+        if request.rejection.policy not in supported:
             raise PlanningError(
                 f"Unsupported on_reject policy: {request.rejection.policy!r}. "
-                f"Supported: {', '.join(sorted(_POLICIES))}",
+                f"Supported: {', '.join(supported)}",
+                stage="rejection",
+            )
+        if request.rejection.policy == "callback" and request.rejection.reject_callback is None:
+            raise PlanningError(
+                "on_reject='callback' requires reject_callback=",
+                stage="rejection",
+            )
+        if (
+            request.rejection.policy == "quarantine"
+            and request.rejection.quarantine_provider is None
+        ):
+            raise PlanningError(
+                "on_reject='quarantine' requires quarantine=",
+                stage="rejection",
+            )
+        if request.rejection.max_rejections is not None and request.rejection.max_rejections < 0:
+            raise PlanningError(
+                "max_rejections must be >= 0",
+                stage="rejection",
+            )
+        if request.rejection.max_rejection_rate is not None and not (
+            0.0 <= request.rejection.max_rejection_rate <= 1.0
+        ):
+            raise PlanningError(
+                "max_rejection_rate must be between 0.0 and 1.0",
                 stage="rejection",
             )
         if request.adapter.orm_validation not in {"mapping", "from_attributes"}:
@@ -628,8 +657,57 @@ class QueryPlanner(Generic[T]):
         execution_id: str,
     ) -> RejectionPlan:
         del execution_id
-        policy_cls = _POLICIES[request.rejection.policy]
+        import inspect
+
+        cfg = request.rejection
+        policy: RejectionPolicy
+        if cfg.policy == "callback":
+            callback = cfg.reject_callback
+            assert callback is not None
+            is_async = inspect.iscoroutinefunction(callback)
+            if is_async and not cfg.async_execution:
+                raise PlanningError(
+                    "Async reject_callback requires aselect/aexecute/astream",
+                    stage="rejection",
+                )
+            policy = CallbackPolicy(
+                callback=callback,
+                on_callback_error=cfg.on_callback_error,
+                callback_values=cfg.callback_values,
+                redact_fields=cfg.redact_fields,
+                async_mode=is_async,
+            )
+        elif cfg.policy == "quarantine":
+            provider = cfg.quarantine_provider
+            assert provider is not None
+            has_sync = callable(getattr(provider, "write", None))
+            has_async = callable(getattr(provider, "awrite", None))
+            if cfg.async_execution:
+                if not has_async and not has_sync:
+                    raise PlanningError(
+                        "quarantine provider must implement write or awrite",
+                        stage="rejection",
+                    )
+            elif not has_sync:
+                raise PlanningError(
+                    "Sync APIs require a quarantine provider with write()",
+                    stage="rejection",
+                )
+            policy = QuarantinePolicy(
+                provider=provider,
+                on_quarantine_error=cfg.on_quarantine_error,
+                quarantine_values=cfg.quarantine_values,
+                quarantine_retention=cfg.quarantine_retention,
+                redact_fields=cfg.redact_fields,
+                async_mode=cfg.async_execution and has_async and not has_sync,
+            )
+        else:
+            policy_cls = _SIMPLE_POLICIES[cfg.policy]
+            policy = policy_cls()
         return RejectionPlan(
-            policy=policy_cls(),
-            policy_name=request.rejection.policy,
+            policy=policy,
+            policy_name=cfg.policy,
+            max_rejections=cfg.max_rejections,
+            max_rejection_rate=cfg.max_rejection_rate,
+            quarantine_retention=cfg.quarantine_retention,
         )

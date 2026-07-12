@@ -46,6 +46,8 @@ jobs:
           python examples/orm_projected.py
           python examples/orm_entity.py
           python examples/sqlmodel_basic.py
+          python examples/callback_basic.py
+          python examples/quarantine_jsonl.py
 
   docs:
     runs-on: ubuntu-latest

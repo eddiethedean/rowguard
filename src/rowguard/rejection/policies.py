@@ -1,12 +1,17 @@
 from __future__ import annotations
 
 from rowguard.errors import ResultAssemblyError, RowAdaptationError, RowValidationError
-from rowguard.rejection.base import RejectionDecision
+from rowguard.rejection.base import RejectionContext, RejectionDecision
 from rowguard.results.rejected_row import RejectedRow
 
 
 class RaisePolicy:
-    def handle(self, rejected: RejectedRow) -> RejectionDecision:
+    def handle(
+        self,
+        rejected: RejectedRow,
+        context: RejectionContext,
+    ) -> RejectionDecision:
+        del context
         if rejected.validation_error is not None:
             return RejectionDecision(
                 continue_processing=False,
@@ -42,7 +47,12 @@ class RaisePolicy:
 
 
 class CollectPolicy:
-    def handle(self, rejected: RejectedRow) -> RejectionDecision:
+    def handle(
+        self,
+        rejected: RejectedRow,
+        context: RejectionContext,
+    ) -> RejectionDecision:
+        del rejected, context
         return RejectionDecision(
             continue_processing=True,
             retain_rejection=True,
@@ -50,7 +60,12 @@ class CollectPolicy:
 
 
 class SkipPolicy:
-    def handle(self, rejected: RejectedRow) -> RejectionDecision:
+    def handle(
+        self,
+        rejected: RejectedRow,
+        context: RejectionContext,
+    ) -> RejectionDecision:
+        del rejected, context
         return RejectionDecision(
             continue_processing=True,
             retain_rejection=False,

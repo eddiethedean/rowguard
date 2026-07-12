@@ -55,6 +55,9 @@ class ValidationPlan(Generic[T]):
 class RejectionPlan:
     policy: RejectionPolicy
     policy_name: str
+    max_rejections: int | None = None
+    max_rejection_rate: float | None = None
+    quarantine_retention: str = "receipt"
 
 
 @dataclass(frozen=True, slots=True)

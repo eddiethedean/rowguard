@@ -9,8 +9,9 @@ from pydantic import BaseModel
 from rowguard.errors import QueryExecutionError, ResultAssemblyError, RowGuardError
 from rowguard.execution.context import SyncExecutionContext
 from rowguard.execution.guards import require_session_for_entity_plan
-from rowguard.execution.processor import ProcessedRow, process_row
+from rowguard.execution.processor import ProcessedRow, build_rejection_context, process_row
 from rowguard.execution.state import ExecutionState
+from rowguard.execution.thresholds import check_rejection_thresholds
 from rowguard.planning.execution_plan import ExecutionPlan
 from rowguard.results.query_result import QueryResult
 
@@ -32,7 +33,18 @@ class SyncExecutionEngine(Generic[T]):
         try:
             result = self._execute_statement(plan, context)
             for index, row in enumerate(result):
-                processed = process_row(row=row, index=index, plan=plan)
+                rejection_context = build_rejection_context(
+                    plan=plan,
+                    rows_read=state.statistics.rows_read,
+                    rows_accepted=state.statistics.rows_accepted,
+                    rows_rejected=state.statistics.rows_rejected,
+                )
+                processed = process_row(
+                    row=row,
+                    index=index,
+                    plan=plan,
+                    context=rejection_context,
+                )
                 if not self._consume_processed(state, processed):
                     break
         except RowGuardError as exc:
@@ -42,6 +54,7 @@ class SyncExecutionEngine(Generic[T]):
             primary_error = QueryExecutionError(f"Query execution failed: {exc}")
             raise primary_error from exc
         finally:
+            self._close_policy(plan)
             if result is not None:
                 close = getattr(result, "close", None)
                 if callable(close):
@@ -67,10 +80,22 @@ class SyncExecutionEngine(Generic[T]):
 
         try:
             for index, row in enumerate(rows):
-                processed = process_row(row=row, index=index, plan=plan)
+                rejection_context = build_rejection_context(
+                    plan=plan,
+                    rows_read=state.statistics.rows_read,
+                    rows_accepted=state.statistics.rows_accepted,
+                    rows_rejected=state.statistics.rows_rejected,
+                )
+                processed = process_row(
+                    row=row,
+                    index=index,
+                    plan=plan,
+                    context=rejection_context,
+                )
                 if not self._consume_processed(state, processed):
                     break
         finally:
+            self._close_policy(plan)
             state.statistics.execution_time_ns = perf_counter_ns() - started
 
         return self._assemble(state)
@@ -87,8 +112,15 @@ class SyncExecutionEngine(Generic[T]):
             state.accepted.append(processed.model)
             return True
 
+        if processed.quarantine_receipt is not None:
+            state.quarantine_receipts.append(processed.quarantine_receipt)
         if processed.retain_rejection and processed.rejected is not None:
             state.rejected.append(processed.rejected)
+        check_rejection_thresholds(
+            statistics=state.statistics,
+            rejection_plan=state.plan.rejection_plan,
+            last_rejection=processed.rejected,
+        )
         if processed.raise_error is not None:
             raise processed.raise_error
         return processed.continue_processing
@@ -110,6 +142,11 @@ class SyncExecutionEngine(Generic[T]):
             return context.connection.execute(plan.statement)
         raise QueryExecutionError("No session or connection available for execution")
 
+    def _close_policy(self, plan: ExecutionPlan[T]) -> None:
+        close = getattr(plan.rejection_policy, "close", None)
+        if callable(close):
+            close()
+
     def _assemble(self, state: ExecutionState[T]) -> QueryResult[T]:
         stats = state.statistics.snapshot()
         if stats.rows_accepted != len(state.accepted):
@@ -127,4 +164,5 @@ class SyncExecutionEngine(Generic[T]):
             statistics=stats,
             statement=state.plan.statement,
             diagnostics=tuple(state.diagnostics),
+            quarantine_receipts=tuple(state.quarantine_receipts),
         )

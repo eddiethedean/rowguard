@@ -4,7 +4,7 @@ Single source of truth for what RowGuard **ships today** versus what is still
 **design / roadmap**. When a deep design doc conflicts with this page, **this
 page wins** for adopter expectations.
 
-## Shipped in 0.5.0
+## Shipped in 0.6.0
 
 | Area | Status |
 | --- | --- |
@@ -12,7 +12,11 @@ page wins** for adopter expectations.
 | Sync streaming (`stream` → `StreamResult`) | Shipped |
 | Async Core API (`aselect`, `aexecute`) | Shipped |
 | Async streaming (`astream` → `AsyncStreamResult`) | Shipped |
-| Rejection policies `raise` / `collect` / `skip` | Shipped |
+| Rejection policies `raise` / `collect` / `skip` / `log` / `callback` / `quarantine` | Shipped |
+| `CallbackContext` / `CallbackDecision` / async reject callbacks | Shipped |
+| `QuarantineRecord` / `QuarantineReceipt` | Shipped |
+| `InMemoryQuarantineProvider` / `JSONLQuarantineProvider` | Shipped |
+| Redaction / retention / rejection thresholds | Shipped |
 | SQLAlchemy Core `Table` / `Select` | Shipped |
 | SQLAlchemy ORM mapped classes (projected + single-entity) | Shipped |
 | SQLModel table sources (`rowguard[sqlmodel]`) | Shipped |
@@ -27,12 +31,11 @@ page wins** for adopter expectations.
 
 | Area | Target | Notes |
 | --- | --- | --- |
-| Nested relationship / graph validation | Later | Explicitly out of 0.5 |
-| Callback / quarantine / log rejection policies | **0.6.0** | Design docs under Future / design |
-| Async reject handlers | **0.6.0** | Same as sync: not shipped |
-| Plugin system | **0.7.0** | Design draft only |
+| Nested relationship / graph validation | Later | Explicitly out of 0.6 |
+| Plugin system / provider registries | **0.7.0** | Design draft only |
+| SQL / cloud / queue quarantine providers | Post-1.0 | In-memory + JSONL only in 0.6 |
 | Reflection / raw `text()` | **0.8.0** | Design draft only |
-| asyncpg as required CI driver | Later | Not required for 0.5 |
+| asyncpg as required CI driver | Later | Not required for 0.6 |
 
 ## How to read design docs
 
@@ -41,8 +44,8 @@ use present tense in places for readability, but **APIs and examples there must
 not be copied into production code** until the matching release ships and this
 page is updated.
 
-ORM / SQLModel design notes under Integrations are **shipped** as of 0.5; prefer
-[ORM and SQLModel](../guides/orm-sqlmodel.md) for the supported surface.
+Callback / quarantine design notes are **shipped** as of 0.6; prefer
+[Rejection policies](../guides/rejection-policies.md) for the supported surface.
 
 ## Related
 

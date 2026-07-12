@@ -139,6 +139,16 @@ def test_validate_rows_invalid_policy() -> None:
         rowguard.validate_rows(
             rows=[{"id": 1, "name": "Ada", "age": 37}],
             model=UserRead,
+            on_reject="not-a-policy",
+        )
+
+
+@pytest.mark.integration
+def test_validate_rows_callback_requires_handler() -> None:
+    with pytest.raises(ConfigurationError, match="reject_callback"):
+        rowguard.validate_rows(
+            rows=[{"id": 1, "name": "Ada", "age": 37}],
+            model=UserRead,
             on_reject="callback",
         )
 

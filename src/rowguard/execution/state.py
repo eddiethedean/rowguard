@@ -57,3 +57,5 @@ class ExecutionState(Generic[T]):
     accepted: list[T] = field(default_factory=list)
     rejected: list[RejectedRow] = field(default_factory=list)
     diagnostics: list[Diagnostic] = field(default_factory=list)
+    quarantine_receipts: list[Any] = field(default_factory=list)
+

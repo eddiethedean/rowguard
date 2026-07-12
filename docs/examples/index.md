@@ -12,6 +12,8 @@ Runnable scripts (see also
 | [orm_projected.py](https://github.com/eddiethedean/rowguard/blob/main/examples/orm_projected.py) | ORM projection (`source=User`) |
 | [orm_entity.py](https://github.com/eddiethedean/rowguard/blob/main/examples/orm_entity.py) | Entity `table=User` |
 | [sqlmodel_basic.py](https://github.com/eddiethedean/rowguard/blob/main/examples/sqlmodel_basic.py) | SQLModel (`rowguard[sqlmodel]`) |
+| [callback_basic.py](https://github.com/eddiethedean/rowguard/blob/main/examples/callback_basic.py) | `on_reject="callback"` |
+| [quarantine_jsonl.py](https://github.com/eddiethedean/rowguard/blob/main/examples/quarantine_jsonl.py) | JSONL quarantine receipts |
 
 ```bash
 make install

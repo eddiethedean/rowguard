@@ -1,11 +1,11 @@
 # CALLBACKS.md
 
-:::{admonition} Status: not shipped in 0.5.0
-:class: warning
+:::{admonition} Status: shipped in 0.6.0
+:class: tip
 
-This document is a **design draft for 0.6.0**. Callback rejection policies are
-**not available** yet. Shipped policies are `raise`, `collect`, and `skip`.
-See [Supported vs planned](../project/supported.md).
+Callback rejection policies are available. Prefer
+[Rejection policies](../guides/rejection-policies.md) for the supported surface.
+This page retains design detail beyond the MVP.
 :::
 
 # RowGuard Rejection Callbacks

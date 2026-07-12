@@ -12,10 +12,12 @@ from rowguard.errors import QueryExecutionError, RowGuardError
 from rowguard.execution.context import SyncExecutionContext
 from rowguard.execution.guards import require_session_for_entity_plan
 from rowguard.execution.observer import StreamObserver
-from rowguard.execution.processor import process_row
+from rowguard.execution.processor import build_rejection_context, process_row
 from rowguard.execution.state import MutableStatistics
+from rowguard.execution.thresholds import check_rejection_thresholds
 from rowguard.planning.config import StreamingConfig
 from rowguard.planning.execution_plan import ExecutionPlan
+from rowguard.results.quarantine import QuarantineReceipt
 from rowguard.results.rejected_row import RejectedRow
 from rowguard.statistics import QueryStatistics
 
@@ -46,6 +48,7 @@ class StreamResult(Generic[T]):
         self._observers: tuple[StreamObserver, ...] = tuple(observers)
         self._statistics = MutableStatistics()
         self._rejected: list[RejectedRow] = []
+        self._quarantine_receipts: list[QuarantineReceipt] = []
         self._diagnostics: list[Diagnostic] = list(plan.diagnostics)
         self._db_result: Any | None = None
         self._row_iter: Iterator[Any] | None = None
@@ -67,6 +70,10 @@ class StreamResult(Generic[T]):
     @property
     def rejected(self) -> tuple[RejectedRow, ...]:
         return tuple(self._rejected)
+
+    @property
+    def quarantine_receipts(self) -> tuple[QuarantineReceipt, ...]:
+        return tuple(self._quarantine_receipts)
 
     @property
     def diagnostics(self) -> tuple[Diagnostic, ...]:
@@ -138,6 +145,14 @@ class StreamResult(Generic[T]):
             self._db_result = None
             self._row_iter = None
 
+        policy_close = getattr(self._plan.rejection_policy, "close", None)
+        if callable(policy_close):
+            try:
+                policy_close()
+            except Exception as error:
+                if close_error is None:
+                    close_error = error
+
         self._notify_closed()
 
         if close_error is not None and self._primary_error is None:
@@ -159,7 +174,18 @@ class StreamResult(Generic[T]):
             index = self._index
             self._index += 1
             try:
-                processed = process_row(row=row, index=index, plan=self._plan)
+                rejection_context = build_rejection_context(
+                    plan=self._plan,
+                    rows_read=self._statistics.rows_read,
+                    rows_accepted=self._statistics.rows_accepted,
+                    rows_rejected=self._statistics.rows_rejected,
+                )
+                processed = process_row(
+                    row=row,
+                    index=index,
+                    plan=self._plan,
+                    context=rejection_context,
+                )
             except RowGuardError as error:
                 self._primary_error = error
                 self._notify_failed(error)
@@ -179,10 +205,23 @@ class StreamResult(Generic[T]):
                 self._notify_accepted(index, processed.model)
                 return processed.model
 
+            if processed.quarantine_receipt is not None:
+                self._quarantine_receipts.append(processed.quarantine_receipt)
             if processed.rejected is not None:
                 self._notify_rejected(processed.rejected)
                 if processed.retain_rejection:
                     self._rejected.append(processed.rejected)
+            try:
+                check_rejection_thresholds(
+                    statistics=self._statistics,
+                    rejection_plan=self._plan.rejection_plan,
+                    last_rejection=processed.rejected,
+                )
+            except RowGuardError as error:
+                self._primary_error = error
+                self._notify_failed(error)
+                self.close()
+                raise
 
             if processed.raise_error is not None:
                 self._primary_error = processed.raise_error

@@ -16,9 +16,15 @@ from rowguard.execution.sync import SyncExecutionEngine
 from rowguard.planning.compiler import QueryPlanner
 from rowguard.planning.config import (
     AdapterConfig,
+    CallbackErrorMode,
+    CallbackValuesMode,
     DiagnosticsConfig,
     OrmValidationMode,
     PushdownConfig,
+    QuarantineErrorMode,
+    QuarantineRetentionMode,
+    QuarantineTransactionMode,
+    QuarantineValuesMode,
     RejectionConfig,
     RejectionPolicyName,
     StreamingConfig,
@@ -34,7 +40,10 @@ from rowguard.planning.execution_plan import (
 )
 from rowguard.planning.request import QueryRequest
 from rowguard.rejection.base import RejectionPolicy
+from rowguard.rejection.callback import CallbackPolicy
+from rowguard.rejection.log import LogPolicy
 from rowguard.rejection.policies import CollectPolicy, RaisePolicy, SkipPolicy
+from rowguard.rejection.quarantine import QuarantinePolicy
 from rowguard.results.async_stream_result import AsyncStreamResult
 from rowguard.results.query_result import QueryResult
 from rowguard.results.stream_result import StreamResult
@@ -42,11 +51,59 @@ from rowguard.validation.pydantic import PydanticValidator
 
 T = TypeVar("T", bound=BaseModel)
 
-_POLICIES: dict[str, type[RejectionPolicy]] = {
-    "raise": RaisePolicy,
-    "collect": CollectPolicy,
-    "skip": SkipPolicy,
-}
+_SUPPORTED_POLICIES = ("raise", "collect", "skip", "callback", "quarantine", "log")
+
+
+def _rejection_config(
+    *,
+    on_reject: str,
+    reject_callback: Any | None,
+    quarantine: Any | None,
+    on_callback_error: CallbackErrorMode,
+    callback_values: CallbackValuesMode,
+    on_quarantine_error: QuarantineErrorMode,
+    quarantine_values: QuarantineValuesMode,
+    quarantine_retention: QuarantineRetentionMode,
+    quarantine_transaction: QuarantineTransactionMode,
+    redact_fields: Iterable[str] | None,
+    max_rejections: int | None,
+    max_rejection_rate: float | None,
+    async_execution: bool,
+) -> RejectionConfig:
+    if on_reject not in _SUPPORTED_POLICIES:
+        raise ConfigurationError(
+            f"Unsupported on_reject policy: {on_reject!r}. "
+            f"Supported: {', '.join(_SUPPORTED_POLICIES)}"
+        )
+    if on_reject == "callback" and reject_callback is None:
+        raise ConfigurationError("on_reject='callback' requires reject_callback=")
+    if on_reject == "quarantine" and quarantine is None:
+        raise ConfigurationError("on_reject='quarantine' requires quarantine=")
+    if on_reject != "callback" and reject_callback is not None:
+        raise ConfigurationError("reject_callback= is only valid with on_reject='callback'")
+    if on_reject != "quarantine" and quarantine is not None:
+        raise ConfigurationError("quarantine= is only valid with on_reject='quarantine'")
+    if max_rejections is not None and max_rejections < 0:
+        raise ConfigurationError("max_rejections must be >= 0")
+    if max_rejection_rate is not None and not (0.0 <= max_rejection_rate <= 1.0):
+        raise ConfigurationError("max_rejection_rate must be between 0.0 and 1.0")
+
+    policy: RejectionPolicyName = on_reject  # type: ignore[assignment]
+    return RejectionConfig(
+        policy=policy,
+        reject_callback=reject_callback,
+        quarantine_provider=quarantine,
+        on_callback_error=on_callback_error,
+        callback_values=callback_values,
+        on_quarantine_error=on_quarantine_error,
+        quarantine_values=quarantine_values,
+        quarantine_retention=quarantine_retention,
+        quarantine_transaction=quarantine_transaction,
+        redact_fields=frozenset(redact_fields) if redact_fields is not None else None,
+        max_rejections=max_rejections,
+        max_rejection_rate=max_rejection_rate,
+        async_execution=async_execution,
+    )
 
 
 def _build_request(
@@ -60,18 +117,25 @@ def _build_request(
     column_map: Mapping[str, Any] | None = None,
     parameters: Mapping[str, object] | None = None,
     on_reject: str = "raise",
+    reject_callback: Any | None = None,
+    quarantine: Any | None = None,
+    on_callback_error: CallbackErrorMode = "raise",
+    callback_values: CallbackValuesMode = "full",
+    on_quarantine_error: QuarantineErrorMode = "raise",
+    quarantine_values: QuarantineValuesMode = "full",
+    quarantine_retention: QuarantineRetentionMode = "receipt",
+    quarantine_transaction: QuarantineTransactionMode = "separate",
+    redact_fields: Iterable[str] | None = None,
+    max_rejections: int | None = None,
+    max_rejection_rate: float | None = None,
     use_sqlrules: bool = True,
     compiled_rules: Mapping[str, Any] | None = None,
     pushdown_source: Any | None = None,
     strict: bool | None = None,
     orm_validation: OrmValidationMode = "mapping",
     unloaded_attributes: UnloadedAttributesPolicy = "error",
+    async_execution: bool = False,
 ) -> QueryRequest[T]:
-    if on_reject not in _POLICIES:
-        raise ConfigurationError(
-            f"Unsupported on_reject policy: {on_reject!r}. "
-            f"Supported: {', '.join(sorted(_POLICIES))}"
-        )
     if orm_validation not in {"mapping", "from_attributes"}:
         raise ConfigurationError(
             f"Unsupported orm_validation: {orm_validation!r}. "
@@ -82,7 +146,6 @@ def _build_request(
             f"Unsupported unloaded_attributes: {unloaded_attributes!r}. "
             "Supported in 0.5: error"
         )
-    policy: RejectionPolicyName = on_reject  # type: ignore[assignment]
     return QueryRequest(
         model=model,
         source=source,
@@ -99,7 +162,21 @@ def _build_request(
             strict=strict,
             from_attributes=orm_validation == "from_attributes",
         ),
-        rejection=RejectionConfig(policy=policy),
+        rejection=_rejection_config(
+            on_reject=on_reject,
+            reject_callback=reject_callback,
+            quarantine=quarantine,
+            on_callback_error=on_callback_error,
+            callback_values=callback_values,
+            on_quarantine_error=on_quarantine_error,
+            quarantine_values=quarantine_values,
+            quarantine_retention=quarantine_retention,
+            quarantine_transaction=quarantine_transaction,
+            redact_fields=redact_fields,
+            max_rejections=max_rejections,
+            max_rejection_rate=max_rejection_rate,
+            async_execution=async_execution,
+        ),
         diagnostics=DiagnosticsConfig(),
         adapter=AdapterConfig(
             field_map=field_map,
@@ -122,12 +199,24 @@ def compile_plan(
     column_map: Mapping[str, Any] | None = None,
     parameters: Mapping[str, object] | None = None,
     on_reject: str = "raise",
+    reject_callback: Any | None = None,
+    quarantine: Any | None = None,
+    on_callback_error: CallbackErrorMode = "raise",
+    callback_values: CallbackValuesMode = "full",
+    on_quarantine_error: QuarantineErrorMode = "raise",
+    quarantine_values: QuarantineValuesMode = "full",
+    quarantine_retention: QuarantineRetentionMode = "receipt",
+    quarantine_transaction: QuarantineTransactionMode = "separate",
+    redact_fields: Iterable[str] | None = None,
+    max_rejections: int | None = None,
+    max_rejection_rate: float | None = None,
     use_sqlrules: bool = True,
     compiled_rules: Mapping[str, Any] | None = None,
     pushdown_source: Any | None = None,
     strict: bool | None = None,
     orm_validation: OrmValidationMode = "mapping",
     unloaded_attributes: UnloadedAttributesPolicy = "error",
+    async_execution: bool = False,
 ) -> ExecutionPlan[T]:
     """Compile an immutable execution plan without running a query."""
     if table is not None and source is not None:
@@ -144,14 +233,61 @@ def compile_plan(
         column_map=column_map,
         parameters=parameters,
         on_reject=on_reject,
+        reject_callback=reject_callback,
+        quarantine=quarantine,
+        on_callback_error=on_callback_error,
+        callback_values=callback_values,
+        on_quarantine_error=on_quarantine_error,
+        quarantine_values=quarantine_values,
+        quarantine_retention=quarantine_retention,
+        quarantine_transaction=quarantine_transaction,
+        redact_fields=redact_fields,
+        max_rejections=max_rejections,
+        max_rejection_rate=max_rejection_rate,
         use_sqlrules=use_sqlrules,
         compiled_rules=compiled_rules,
         pushdown_source=pushdown_source,
         strict=strict,
         orm_validation=orm_validation,
         unloaded_attributes=unloaded_attributes,
+        async_execution=async_execution,
     )
     return QueryPlanner[T]().compile(request)
+
+
+def _plan_kwargs(
+    *,
+    on_reject: str = "raise",
+    reject_callback: Any | None = None,
+    quarantine: Any | None = None,
+    on_callback_error: CallbackErrorMode = "raise",
+    callback_values: CallbackValuesMode = "full",
+    on_quarantine_error: QuarantineErrorMode = "raise",
+    quarantine_values: QuarantineValuesMode = "full",
+    quarantine_retention: QuarantineRetentionMode = "receipt",
+    quarantine_transaction: QuarantineTransactionMode = "separate",
+    redact_fields: Iterable[str] | None = None,
+    max_rejections: int | None = None,
+    max_rejection_rate: float | None = None,
+    async_execution: bool = False,
+    **base: Any,
+) -> dict[str, Any]:
+    return {
+        **base,
+        "on_reject": on_reject,
+        "reject_callback": reject_callback,
+        "quarantine": quarantine,
+        "on_callback_error": on_callback_error,
+        "callback_values": callback_values,
+        "on_quarantine_error": on_quarantine_error,
+        "quarantine_values": quarantine_values,
+        "quarantine_retention": quarantine_retention,
+        "quarantine_transaction": quarantine_transaction,
+        "redact_fields": redact_fields,
+        "max_rejections": max_rejections,
+        "max_rejection_rate": max_rejection_rate,
+        "async_execution": async_execution,
+    }
 
 
 def select(
@@ -166,6 +302,17 @@ def select(
     column_map: Mapping[str, Any] | None = None,
     parameters: Mapping[str, object] | None = None,
     on_reject: str = "raise",
+    reject_callback: Any | None = None,
+    quarantine: Any | None = None,
+    on_callback_error: CallbackErrorMode = "raise",
+    callback_values: CallbackValuesMode = "full",
+    on_quarantine_error: QuarantineErrorMode = "raise",
+    quarantine_values: QuarantineValuesMode = "full",
+    quarantine_retention: QuarantineRetentionMode = "receipt",
+    quarantine_transaction: QuarantineTransactionMode = "separate",
+    redact_fields: Iterable[str] | None = None,
+    max_rejections: int | None = None,
+    max_rejection_rate: float | None = None,
     use_sqlrules: bool = True,
     compiled_rules: Mapping[str, Any] | None = None,
     strict: bool | None = None,
@@ -177,19 +324,32 @@ def select(
     ``table`` may be a Core ``Table`` or an ORM / SQLModel mapped class.
     """
     plan = compile_plan(
-        model=model,
-        table=table,
-        where=where,
-        field_map=field_map,
-        attribute_map=attribute_map,
-        column_map=column_map,
-        parameters=parameters,
-        on_reject=on_reject,
-        use_sqlrules=use_sqlrules,
-        compiled_rules=compiled_rules,
-        strict=strict,
-        orm_validation=orm_validation,
-        unloaded_attributes=unloaded_attributes,
+        **_plan_kwargs(
+            model=model,
+            table=table,
+            where=where,
+            field_map=field_map,
+            attribute_map=attribute_map,
+            column_map=column_map,
+            parameters=parameters,
+            on_reject=on_reject,
+            reject_callback=reject_callback,
+            quarantine=quarantine,
+            on_callback_error=on_callback_error,
+            callback_values=callback_values,
+            on_quarantine_error=on_quarantine_error,
+            quarantine_values=quarantine_values,
+            quarantine_retention=quarantine_retention,
+            quarantine_transaction=quarantine_transaction,
+            redact_fields=redact_fields,
+            max_rejections=max_rejections,
+            max_rejection_rate=max_rejection_rate,
+            use_sqlrules=use_sqlrules,
+            compiled_rules=compiled_rules,
+            strict=strict,
+            orm_validation=orm_validation,
+            unloaded_attributes=unloaded_attributes,
+        )
     )
     context = SyncExecutionContext(session=session, connection=connection)
     return SyncExecutionEngine[T]().execute(plan, context)
@@ -208,6 +368,17 @@ def execute(
     column_map: Mapping[str, Any] | None = None,
     parameters: Mapping[str, object] | None = None,
     on_reject: str = "raise",
+    reject_callback: Any | None = None,
+    quarantine: Any | None = None,
+    on_callback_error: CallbackErrorMode = "raise",
+    callback_values: CallbackValuesMode = "full",
+    on_quarantine_error: QuarantineErrorMode = "raise",
+    quarantine_values: QuarantineValuesMode = "full",
+    quarantine_retention: QuarantineRetentionMode = "receipt",
+    quarantine_transaction: QuarantineTransactionMode = "separate",
+    redact_fields: Iterable[str] | None = None,
+    max_rejections: int | None = None,
+    max_rejection_rate: float | None = None,
     use_sqlrules: bool = True,
     compiled_rules: Mapping[str, Any] | None = None,
     strict: bool | None = None,
@@ -216,21 +387,34 @@ def execute(
 ) -> QueryResult[T]:
     """Execute an existing SQLAlchemy statement and validate every row."""
     plan = compile_plan(
-        model=model,
-        statement=statement,
-        source=source,
-        where=where,
-        field_map=field_map,
-        attribute_map=attribute_map,
-        column_map=column_map,
-        parameters=parameters,
-        on_reject=on_reject,
-        use_sqlrules=use_sqlrules,
-        compiled_rules=compiled_rules,
-        pushdown_source=source,
-        strict=strict,
-        orm_validation=orm_validation,
-        unloaded_attributes=unloaded_attributes,
+        **_plan_kwargs(
+            model=model,
+            statement=statement,
+            source=source,
+            where=where,
+            field_map=field_map,
+            attribute_map=attribute_map,
+            column_map=column_map,
+            parameters=parameters,
+            on_reject=on_reject,
+            reject_callback=reject_callback,
+            quarantine=quarantine,
+            on_callback_error=on_callback_error,
+            callback_values=callback_values,
+            on_quarantine_error=on_quarantine_error,
+            quarantine_values=quarantine_values,
+            quarantine_retention=quarantine_retention,
+            quarantine_transaction=quarantine_transaction,
+            redact_fields=redact_fields,
+            max_rejections=max_rejections,
+            max_rejection_rate=max_rejection_rate,
+            use_sqlrules=use_sqlrules,
+            compiled_rules=compiled_rules,
+            pushdown_source=source,
+            strict=strict,
+            orm_validation=orm_validation,
+            unloaded_attributes=unloaded_attributes,
+        )
     )
     context = SyncExecutionContext(session=session, connection=connection)
     return SyncExecutionEngine[T]().execute(plan, context)
@@ -250,6 +434,17 @@ def stream(
     column_map: Mapping[str, Any] | None = None,
     parameters: Mapping[str, object] | None = None,
     on_reject: str = "raise",
+    reject_callback: Any | None = None,
+    quarantine: Any | None = None,
+    on_callback_error: CallbackErrorMode = "raise",
+    callback_values: CallbackValuesMode = "full",
+    on_quarantine_error: QuarantineErrorMode = "raise",
+    quarantine_values: QuarantineValuesMode = "full",
+    quarantine_retention: QuarantineRetentionMode = "receipt",
+    quarantine_transaction: QuarantineTransactionMode = "separate",
+    redact_fields: Iterable[str] | None = None,
+    max_rejections: int | None = None,
+    max_rejection_rate: float | None = None,
     use_sqlrules: bool = True,
     compiled_rules: Mapping[str, Any] | None = None,
     strict: bool | None = None,
@@ -271,22 +466,35 @@ def stream(
         raise ConfigurationError("yield_per must be a positive integer")
 
     plan = compile_plan(
-        model=model,
-        table=table,
-        statement=statement,
-        source=source,
-        where=where,
-        field_map=field_map,
-        attribute_map=attribute_map,
-        column_map=column_map,
-        parameters=parameters,
-        on_reject=on_reject,
-        use_sqlrules=use_sqlrules,
-        compiled_rules=compiled_rules,
-        pushdown_source=source if statement is not None else None,
-        strict=strict,
-        orm_validation=orm_validation,
-        unloaded_attributes=unloaded_attributes,
+        **_plan_kwargs(
+            model=model,
+            table=table,
+            statement=statement,
+            source=source,
+            where=where,
+            field_map=field_map,
+            attribute_map=attribute_map,
+            column_map=column_map,
+            parameters=parameters,
+            on_reject=on_reject,
+            reject_callback=reject_callback,
+            quarantine=quarantine,
+            on_callback_error=on_callback_error,
+            callback_values=callback_values,
+            on_quarantine_error=on_quarantine_error,
+            quarantine_values=quarantine_values,
+            quarantine_retention=quarantine_retention,
+            quarantine_transaction=quarantine_transaction,
+            redact_fields=redact_fields,
+            max_rejections=max_rejections,
+            max_rejection_rate=max_rejection_rate,
+            use_sqlrules=use_sqlrules,
+            compiled_rules=compiled_rules,
+            pushdown_source=source if statement is not None else None,
+            strict=strict,
+            orm_validation=orm_validation,
+            unloaded_attributes=unloaded_attributes,
+        )
     )
     context = SyncExecutionContext(session=session, connection=connection)
     return SyncStreamEngine[T]().open(
@@ -309,6 +517,17 @@ async def aselect(
     column_map: Mapping[str, Any] | None = None,
     parameters: Mapping[str, object] | None = None,
     on_reject: str = "raise",
+    reject_callback: Any | None = None,
+    quarantine: Any | None = None,
+    on_callback_error: CallbackErrorMode = "raise",
+    callback_values: CallbackValuesMode = "full",
+    on_quarantine_error: QuarantineErrorMode = "raise",
+    quarantine_values: QuarantineValuesMode = "full",
+    quarantine_retention: QuarantineRetentionMode = "receipt",
+    quarantine_transaction: QuarantineTransactionMode = "separate",
+    redact_fields: Iterable[str] | None = None,
+    max_rejections: int | None = None,
+    max_rejection_rate: float | None = None,
     use_sqlrules: bool = True,
     compiled_rules: Mapping[str, Any] | None = None,
     strict: bool | None = None,
@@ -317,19 +536,33 @@ async def aselect(
 ) -> QueryResult[T]:
     """Async variant of ``select`` using AsyncSession or AsyncConnection."""
     plan = compile_plan(
-        model=model,
-        table=table,
-        where=where,
-        field_map=field_map,
-        attribute_map=attribute_map,
-        column_map=column_map,
-        parameters=parameters,
-        on_reject=on_reject,
-        use_sqlrules=use_sqlrules,
-        compiled_rules=compiled_rules,
-        strict=strict,
-        orm_validation=orm_validation,
-        unloaded_attributes=unloaded_attributes,
+        **_plan_kwargs(
+            model=model,
+            table=table,
+            where=where,
+            field_map=field_map,
+            attribute_map=attribute_map,
+            column_map=column_map,
+            parameters=parameters,
+            on_reject=on_reject,
+            reject_callback=reject_callback,
+            quarantine=quarantine,
+            on_callback_error=on_callback_error,
+            callback_values=callback_values,
+            on_quarantine_error=on_quarantine_error,
+            quarantine_values=quarantine_values,
+            quarantine_retention=quarantine_retention,
+            quarantine_transaction=quarantine_transaction,
+            redact_fields=redact_fields,
+            max_rejections=max_rejections,
+            max_rejection_rate=max_rejection_rate,
+            use_sqlrules=use_sqlrules,
+            compiled_rules=compiled_rules,
+            strict=strict,
+            orm_validation=orm_validation,
+            unloaded_attributes=unloaded_attributes,
+            async_execution=True,
+        )
     )
     context = AsyncExecutionContext(session=session, connection=connection)
     return await AsyncExecutionEngine[T]().execute(plan, context)
@@ -348,6 +581,17 @@ async def aexecute(
     column_map: Mapping[str, Any] | None = None,
     parameters: Mapping[str, object] | None = None,
     on_reject: str = "raise",
+    reject_callback: Any | None = None,
+    quarantine: Any | None = None,
+    on_callback_error: CallbackErrorMode = "raise",
+    callback_values: CallbackValuesMode = "full",
+    on_quarantine_error: QuarantineErrorMode = "raise",
+    quarantine_values: QuarantineValuesMode = "full",
+    quarantine_retention: QuarantineRetentionMode = "receipt",
+    quarantine_transaction: QuarantineTransactionMode = "separate",
+    redact_fields: Iterable[str] | None = None,
+    max_rejections: int | None = None,
+    max_rejection_rate: float | None = None,
     use_sqlrules: bool = True,
     compiled_rules: Mapping[str, Any] | None = None,
     strict: bool | None = None,
@@ -356,21 +600,35 @@ async def aexecute(
 ) -> QueryResult[T]:
     """Async variant of ``execute`` using AsyncSession or AsyncConnection."""
     plan = compile_plan(
-        model=model,
-        statement=statement,
-        source=source,
-        where=where,
-        field_map=field_map,
-        attribute_map=attribute_map,
-        column_map=column_map,
-        parameters=parameters,
-        on_reject=on_reject,
-        use_sqlrules=use_sqlrules,
-        compiled_rules=compiled_rules,
-        pushdown_source=source,
-        strict=strict,
-        orm_validation=orm_validation,
-        unloaded_attributes=unloaded_attributes,
+        **_plan_kwargs(
+            model=model,
+            statement=statement,
+            source=source,
+            where=where,
+            field_map=field_map,
+            attribute_map=attribute_map,
+            column_map=column_map,
+            parameters=parameters,
+            on_reject=on_reject,
+            reject_callback=reject_callback,
+            quarantine=quarantine,
+            on_callback_error=on_callback_error,
+            callback_values=callback_values,
+            on_quarantine_error=on_quarantine_error,
+            quarantine_values=quarantine_values,
+            quarantine_retention=quarantine_retention,
+            quarantine_transaction=quarantine_transaction,
+            redact_fields=redact_fields,
+            max_rejections=max_rejections,
+            max_rejection_rate=max_rejection_rate,
+            use_sqlrules=use_sqlrules,
+            compiled_rules=compiled_rules,
+            pushdown_source=source,
+            strict=strict,
+            orm_validation=orm_validation,
+            unloaded_attributes=unloaded_attributes,
+            async_execution=True,
+        )
     )
     context = AsyncExecutionContext(session=session, connection=connection)
     return await AsyncExecutionEngine[T]().execute(plan, context)
@@ -390,6 +648,17 @@ def astream(
     column_map: Mapping[str, Any] | None = None,
     parameters: Mapping[str, object] | None = None,
     on_reject: str = "raise",
+    reject_callback: Any | None = None,
+    quarantine: Any | None = None,
+    on_callback_error: CallbackErrorMode = "raise",
+    callback_values: CallbackValuesMode = "full",
+    on_quarantine_error: QuarantineErrorMode = "raise",
+    quarantine_values: QuarantineValuesMode = "full",
+    quarantine_retention: QuarantineRetentionMode = "receipt",
+    quarantine_transaction: QuarantineTransactionMode = "separate",
+    redact_fields: Iterable[str] | None = None,
+    max_rejections: int | None = None,
+    max_rejection_rate: float | None = None,
     use_sqlrules: bool = True,
     compiled_rules: Mapping[str, Any] | None = None,
     strict: bool | None = None,
@@ -411,22 +680,36 @@ def astream(
         raise ConfigurationError("yield_per must be a positive integer")
 
     plan = compile_plan(
-        model=model,
-        table=table,
-        statement=statement,
-        source=source,
-        where=where,
-        field_map=field_map,
-        attribute_map=attribute_map,
-        column_map=column_map,
-        parameters=parameters,
-        on_reject=on_reject,
-        use_sqlrules=use_sqlrules,
-        compiled_rules=compiled_rules,
-        pushdown_source=source if statement is not None else None,
-        strict=strict,
-        orm_validation=orm_validation,
-        unloaded_attributes=unloaded_attributes,
+        **_plan_kwargs(
+            model=model,
+            table=table,
+            statement=statement,
+            source=source,
+            where=where,
+            field_map=field_map,
+            attribute_map=attribute_map,
+            column_map=column_map,
+            parameters=parameters,
+            on_reject=on_reject,
+            reject_callback=reject_callback,
+            quarantine=quarantine,
+            on_callback_error=on_callback_error,
+            callback_values=callback_values,
+            on_quarantine_error=on_quarantine_error,
+            quarantine_values=quarantine_values,
+            quarantine_retention=quarantine_retention,
+            quarantine_transaction=quarantine_transaction,
+            redact_fields=redact_fields,
+            max_rejections=max_rejections,
+            max_rejection_rate=max_rejection_rate,
+            use_sqlrules=use_sqlrules,
+            compiled_rules=compiled_rules,
+            pushdown_source=source if statement is not None else None,
+            strict=strict,
+            orm_validation=orm_validation,
+            unloaded_attributes=unloaded_attributes,
+            async_execution=True,
+        )
     )
     context = AsyncExecutionContext(session=session, connection=connection)
     return AsyncStreamEngine[T]().open(
@@ -443,15 +726,35 @@ def validate_rows(
     model: type[T],
     field_map: Mapping[str, str] | None = None,
     on_reject: str = "raise",
+    reject_callback: Any | None = None,
+    quarantine: Any | None = None,
+    on_callback_error: CallbackErrorMode = "raise",
+    callback_values: CallbackValuesMode = "full",
+    on_quarantine_error: QuarantineErrorMode = "raise",
+    quarantine_values: QuarantineValuesMode = "full",
+    quarantine_retention: QuarantineRetentionMode = "receipt",
+    quarantine_transaction: QuarantineTransactionMode = "separate",
+    redact_fields: Iterable[str] | None = None,
+    max_rejections: int | None = None,
+    max_rejection_rate: float | None = None,
     strict: bool | None = None,
 ) -> QueryResult[T]:
     """Validate row mappings without executing SQL."""
-    policy_cls = _POLICIES.get(on_reject)
-    if policy_cls is None:
-        raise ConfigurationError(
-            f"Unsupported on_reject policy: {on_reject!r}. "
-            f"Supported: {', '.join(sorted(_POLICIES))}"
-        )
+    cfg = _rejection_config(
+        on_reject=on_reject,
+        reject_callback=reject_callback,
+        quarantine=quarantine,
+        on_callback_error=on_callback_error,
+        callback_values=callback_values,
+        on_quarantine_error=on_quarantine_error,
+        quarantine_values=quarantine_values,
+        quarantine_retention=quarantine_retention,
+        quarantine_transaction=quarantine_transaction,
+        redact_fields=redact_fields,
+        max_rejections=max_rejections,
+        max_rejection_rate=max_rejection_rate,
+        async_execution=False,
+    )
 
     if field_map:
         model_fields = set(model.model_fields.keys())
@@ -460,6 +763,47 @@ def validate_rows(
             raise ConfigurationError(
                 f"field_map keys are not model fields: {', '.join(unknown)}"
             )
+
+    import inspect
+
+    policy: RejectionPolicy
+    if cfg.policy == "callback":
+        callback = cfg.reject_callback
+        assert callback is not None
+        if inspect.iscoroutinefunction(callback):
+            raise ConfigurationError(
+                "Async reject_callback requires aselect/aexecute/astream"
+            )
+        policy = CallbackPolicy(
+            callback=callback,
+            on_callback_error=cfg.on_callback_error,
+            callback_values=cfg.callback_values,
+            redact_fields=cfg.redact_fields,
+            async_mode=False,
+        )
+    elif cfg.policy == "quarantine":
+        provider = cfg.quarantine_provider
+        assert provider is not None
+        if not callable(getattr(provider, "write", None)):
+            raise ConfigurationError(
+                "Sync APIs require a quarantine provider with write()"
+            )
+        policy = QuarantinePolicy(
+            provider=provider,
+            on_quarantine_error=cfg.on_quarantine_error,
+            quarantine_values=cfg.quarantine_values,
+            quarantine_retention=cfg.quarantine_retention,
+            redact_fields=cfg.redact_fields,
+            async_mode=False,
+        )
+    elif cfg.policy == "log":
+        policy = LogPolicy()
+    elif cfg.policy == "raise":
+        policy = RaisePolicy()
+    elif cfg.policy == "collect":
+        policy = CollectPolicy()
+    else:
+        policy = SkipPolicy()
 
     plan: ExecutionPlan[T] = ExecutionPlan(
         statement=None,
@@ -474,7 +818,13 @@ def validate_rows(
             model=model,
             strict=strict,
         ),
-        rejection_plan=RejectionPlan(policy=policy_cls(), policy_name=on_reject),
+        rejection_plan=RejectionPlan(
+            policy=policy,
+            policy_name=on_reject,
+            max_rejections=cfg.max_rejections,
+            max_rejection_rate=cfg.max_rejection_rate,
+            quarantine_retention=cfg.quarantine_retention,
+        ),
         use_sqlrules=False,
     )
     return SyncExecutionEngine[T]().validate_rows(plan=plan, rows=rows)

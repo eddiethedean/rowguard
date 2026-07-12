@@ -138,7 +138,7 @@ async with rowguard.astream(
 
 ------------------------------------------------------------------------
 
-# 0.6.0 --- Rejection Platform
+# 0.6.0 --- Rejection Platform (shipped)
 
 ## Goals
 

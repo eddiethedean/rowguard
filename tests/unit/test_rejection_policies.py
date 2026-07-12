@@ -4,6 +4,7 @@ import pytest
 from pydantic import BaseModel, ValidationError
 
 from rowguard.errors import ResultAssemblyError, RowAdaptationError, RowValidationError
+from rowguard.rejection.base import RejectionContext, empty_rejection_context
 from rowguard.rejection.policies import CollectPolicy, RaisePolicy, SkipPolicy
 from rowguard.results.rejected_row import RejectedRow
 
@@ -25,22 +26,26 @@ def make_rejected() -> RejectedRow:
     raise AssertionError("expected validation failure")
 
 
+def _ctx() -> RejectionContext:
+    return empty_rejection_context(model=UserRead)
+
+
 def test_collect_retains() -> None:
-    decision = CollectPolicy().handle(make_rejected())
+    decision = CollectPolicy().handle(make_rejected(), _ctx())
     assert decision.continue_processing
     assert decision.retain_rejection
     assert decision.error is None
 
 
 def test_skip_does_not_retain() -> None:
-    decision = SkipPolicy().handle(make_rejected())
+    decision = SkipPolicy().handle(make_rejected(), _ctx())
     assert decision.continue_processing
     assert not decision.retain_rejection
     assert decision.error is None
 
 
 def test_raise_stops() -> None:
-    decision = RaisePolicy().handle(make_rejected())
+    decision = RaisePolicy().handle(make_rejected(), _ctx())
     assert not decision.continue_processing
     assert not decision.retain_rejection
     assert isinstance(decision.error, RowValidationError)
@@ -56,7 +61,7 @@ def test_raise_adaptation_error() -> None:
         validation_error=None,
         adaptation_error=RowAdaptationError("bad shape"),
     )
-    decision = RaisePolicy().handle(rejected)
+    decision = RaisePolicy().handle(rejected, _ctx())
     assert isinstance(decision.error, RowAdaptationError)
     assert decision.error.row_index == 1
     assert decision.error.model is UserRead
@@ -72,4 +77,4 @@ def test_raise_requires_error() -> None:
         adaptation_error=None,
     )
     with pytest.raises(ResultAssemblyError, match="requires a validation or adaptation error"):
-        RaisePolicy().handle(rejected)
+        RaisePolicy().handle(rejected, _ctx())

@@ -23,8 +23,8 @@ validates **reads** over those stacks.
 
 ## Status
 
-Current release: **[0.5.0](https://rowguard.readthedocs.io/en/latest/project/changelog.html)**
-(Core + async + ORM/SQLModel). See
+Current release: **[0.6.0](https://rowguard.readthedocs.io/en/latest/project/changelog.html)**
+(Core + async + ORM/SQLModel + rejection platform). See
 [Supported vs planned](https://rowguard.readthedocs.io/en/latest/project/supported.html)
 for what is shipped versus deferred.
 
@@ -119,7 +119,7 @@ with Session(engine) as session:
 See [SQLRules pushdown](https://rowguard.readthedocs.io/en/latest/guides/sqlrules-pushdown.html)
 and the [FAQ](https://rowguard.readthedocs.io/en/latest/guides/faq.html).
 
-## Public API (0.5.0)
+## Public API (0.6.0)
 
 | Function | Purpose |
 | --- | --- |

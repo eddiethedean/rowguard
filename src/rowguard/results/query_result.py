@@ -6,6 +6,7 @@ from typing import Any, Generic, TypeVar
 from pydantic import BaseModel
 
 from rowguard.diagnostics import Diagnostic
+from rowguard.results.quarantine import QuarantineReceipt
 from rowguard.results.rejected_row import RejectedRow
 from rowguard.statistics import QueryStatistics
 
@@ -19,6 +20,7 @@ class QueryResult(Generic[T]):
     statistics: QueryStatistics
     statement: Any | None = None
     diagnostics: tuple[Diagnostic, ...] = ()
+    quarantine_receipts: tuple[QuarantineReceipt, ...] = ()
 
     @property
     def has_rejections(self) -> bool:

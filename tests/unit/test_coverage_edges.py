@@ -64,6 +64,7 @@ def test_process_row_adaptation_failure_raise() -> None:
 
 
 def test_raise_policy_wraps_non_adaptation_error() -> None:
+    from rowguard.rejection.base import empty_rejection_context
     from rowguard.results.rejected_row import RejectedRow
 
     rejected = RejectedRow(
@@ -73,7 +74,7 @@ def test_raise_policy_wraps_non_adaptation_error() -> None:
         validation_error=None,
         adaptation_error=ValueError("boom"),
     )
-    decision = RaisePolicy().handle(rejected)
+    decision = RaisePolicy().handle(rejected, empty_rejection_context(model=UserRead))
     assert isinstance(decision.error, RowAdaptationError)
     assert decision.error.row_index == 4
     assert decision.error.model is UserRead

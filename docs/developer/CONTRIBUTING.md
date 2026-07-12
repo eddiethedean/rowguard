@@ -3,10 +3,10 @@
 :::{admonition} Shipped surface first
 :class: tip
 
-Contribute against **0.5 shipped APIs** (Core, async, streaming, ORM/SQLModel).
-Plugin, callback, quarantine, reflection, and raw-SQL helper work is deferred—
-see [Supported vs planned](../project/supported.md). Prefer `make install` /
-`make all` (matches CI).
+Contribute against **0.6 shipped APIs** (Core, async, streaming, ORM/SQLModel,
+callback/quarantine/log). Plugin, reflection, and raw-SQL helper work is
+deferred—see [Supported vs planned](../project/supported.md). Prefer
+`make install` / `make all` (matches CI).
 :::
 
 # Contributing to RowGuard

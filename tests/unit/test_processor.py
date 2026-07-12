@@ -94,7 +94,8 @@ def test_process_row_custom_stop_without_error() -> None:
     from rowguard.rejection.base import RejectionDecision
 
     class StopQuietly:
-        def handle(self, rejected: object) -> RejectionDecision:
+        def handle(self, rejected: object, context: object) -> RejectionDecision:
+            del rejected, context
             return RejectionDecision(
                 continue_processing=False,
                 retain_rejection=False,
