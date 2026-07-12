@@ -1,10 +1,9 @@
 # REJECTION_POLICIES.md
 
-:::{admonition} Status note (0.5.0)
+:::{admonition} Status: shipped in 0.6.0
 :class: tip
 
-**Shipped today:** `raise`, `collect`, `skip`.  
-**Not shipped (design for 0.6.0):** `callback`, `quarantine`, `log`.  
+**Shipped:** `raise`, `collect`, `skip`, `log`, `callback`, `quarantine`.  
 See [Supported vs planned](../project/supported.md) and the
 [rejection policies guide](../guides/rejection-policies.md).
 :::
@@ -264,12 +263,12 @@ Tests should verify:
 - statistics
 - diagnostics
 
-**Target for 0.6.0 (not shipped):**
+**Shipped in 0.6.0:**
 
 - callback
 - quarantine
 - log
-- threshold support
+- threshold support (`max_rejections`, `max_rejection_rate`)
 
 Deferred further:
 

@@ -36,7 +36,7 @@ from rowguard import CallbackDecision
 
 def on_bad(rejected, context):
     metrics.increment("rejects")
-    return CallbackDecision.RETAIN  # or STOP / DROP / None
+    return CallbackDecision.RETAIN  # or STOP / DROP / CONTINUE / None
 
 result = rowguard.select(
     session=session,
@@ -49,6 +49,22 @@ result = rowguard.select(
 
 Async APIs accept `async def` callbacks. Sync APIs reject async callables at
 plan time.
+
+### Callback decisions (0.6)
+
+For standalone `on_reject="callback"` (the callback *is* the rejection policy):
+
+| Decision | Continue? | Retain rejected row? |
+| --- | --- | --- |
+| `None` or `CONTINUE` | Yes | No |
+| `DROP` | Yes | No |
+| `RETAIN` | Yes | Yes |
+| `STOP` | No | No |
+
+`CONTINUE`, `None`, and `DROP` are equivalent for retention in 0.6: processing
+continues and the row is not kept on `result.rejected`. Prefer `CONTINUE` /
+`None` for “acknowledge and move on”; use `DROP` when you want to emphasize
+non-retention.
 
 ## Quarantine
 
@@ -70,8 +86,9 @@ for receipt in result.quarantine_receipts:
 provider.close()
 ```
 
-Reference providers never use the source Session (`quarantine_transaction`
-defaults to `"separate"`).
+Reference providers never use the source Session. In 0.6,
+`quarantine_transaction` must be `"separate"` (the default); other values raise
+`ConfigurationError`.
 
 ## Thresholds
 

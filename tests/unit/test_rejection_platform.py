@@ -7,7 +7,12 @@ import pytest
 from pydantic import BaseModel
 
 import rowguard
-from rowguard.errors import CallbackError, QuarantineError, RejectionThresholdError
+from rowguard.errors import (
+    CallbackError,
+    ConfigurationError,
+    QuarantineError,
+    RejectionThresholdError,
+)
 from rowguard.rejection.callback import CallbackDecision
 from rowguard.rejection.quarantine import InMemoryQuarantineProvider, JSONLQuarantineProvider
 from rowguard.rejection.redaction import REDACTED, redact_mapping
@@ -20,11 +25,18 @@ class UserRead(BaseModel):
 
 
 def test_callback_retain_and_context() -> None:
-    seen: list[int] = []
+    seen: list[tuple[int, int, int, int]] = []
 
     def cb(rejected: object, context: object) -> CallbackDecision:
         del rejected
-        seen.append(context.rejection_count)
+        seen.append(
+            (
+                context.rejection_count,
+                context.rows_read,
+                context.rows_accepted,
+                context.rows_rejected,
+            )
+        )
         return CallbackDecision.RETAIN
 
     result = rowguard.validate_rows(
@@ -35,12 +47,19 @@ def test_callback_retain_and_context() -> None:
     )
     assert result.valid_count == 1
     assert result.rejected_count == 1
-    assert seen == [1]
+    assert result.rejected[0].index == 0
+    assert result.rejected[0].mapping == {"id": "bad", "name": "Ada"}
+    # Pre-increment snapshot: first rejection sees rows_rejected=0, rejection_count=1
+    assert seen == [(1, 0, 0, 0)]
 
 
-def test_callback_stop() -> None:
+def test_callback_stop_does_not_retain_and_stops() -> None:
+    calls = 0
+
     def cb(rejected: object, context: object) -> CallbackDecision:
         del rejected, context
+        nonlocal calls
+        calls += 1
         return CallbackDecision.STOP
 
     result = rowguard.validate_rows(
@@ -53,8 +72,12 @@ def test_callback_stop() -> None:
         on_reject="callback",
         reject_callback=cb,
     )
+    assert calls == 1
     assert result.statistics.rows_read == 1
+    assert result.statistics.rows_rejected == 1
     assert result.valid_count == 0
+    assert result.rejected_count == 0
+    assert result.rejected == ()
 
 
 def test_callback_error_raises() -> None:
@@ -62,13 +85,19 @@ def test_callback_error_raises() -> None:
         del rejected, context
         raise RuntimeError("boom")
 
-    with pytest.raises(CallbackError, match="boom"):
+    with pytest.raises(CallbackError, match="boom") as excinfo:
         rowguard.validate_rows(
             rows=[{"id": "bad", "name": "Ada"}],
             model=UserRead,
             on_reject="callback",
             reject_callback=cb,
         )
+    err = excinfo.value
+    assert err.rejected is not None
+    assert err.rejected.index == 0
+    assert err.rejected.mapping == {"id": "bad", "name": "Ada"}
+    assert isinstance(err.original_error, RuntimeError)
+    assert err.__cause__ is err.original_error
 
 
 def test_log_policy(caplog: pytest.LogCaptureFixture) -> None:
@@ -80,8 +109,21 @@ def test_log_policy(caplog: pytest.LogCaptureFixture) -> None:
         )
     assert result.valid_count == 1
     assert result.rejected_count == 0
+    assert result.rejected == ()
+    assert result.has_rejections is True
     assert result.statistics.rows_rejected == 1
     assert any("rejected row" in r.message.lower() for r in caplog.records)
+
+
+def test_log_has_rejections_without_retained() -> None:
+    result = rowguard.validate_rows(
+        rows=[{"id": "bad", "name": "Ada"}],
+        model=UserRead,
+        on_reject="log",
+    )
+    assert result.has_rejections is True
+    assert result.rejected == ()
+    assert result.rejected_count == 0
 
 
 def test_quarantine_memory_receipt_retention() -> None:
@@ -95,9 +137,20 @@ def test_quarantine_memory_receipt_retention() -> None:
     assert result.valid_count == 1
     assert result.rejected_count == 0
     assert len(result.quarantine_receipts) == 1
+    receipt = result.quarantine_receipts[0]
+    assert receipt.provider == "memory"
+    assert receipt.record_id
+    assert receipt.location == f"memory:{receipt.record_id}"
     assert len(provider.records) == 1
-    assert provider.records[0].schema_version == "1"
-    assert provider.records[0].rejection_type == "validation_error"
+    record = provider.records[0]
+    assert record.schema_version == "1"
+    assert record.rejection_type == "validation_error"
+    assert record.row_index == 0
+    assert record.mapping == {"id": "bad", "name": "Ada"}
+    assert record.errors
+    assert record.errors[0]["type"]
+    assert "loc" in record.errors[0]
+    assert record.errors[0]["msg"]
 
 
 def test_quarantine_both_retention() -> None:
@@ -110,7 +163,9 @@ def test_quarantine_both_retention() -> None:
         quarantine_retention="both",
     )
     assert result.rejected_count == 1
+    assert result.rejected[0].index == 0
     assert len(result.quarantine_receipts) == 1
+    assert provider.records[0].row_index == result.rejected[0].index
 
 
 def test_quarantine_provider_failure_preserves_rejection() -> None:
@@ -126,8 +181,12 @@ def test_quarantine_provider_failure_preserves_rejection() -> None:
             on_reject="quarantine",
             quarantine=Boom(),
         )
-    assert excinfo.value.rejected is not None
-    assert excinfo.value.rejected.index == 0
+    err = excinfo.value
+    assert err.rejected is not None
+    assert err.rejected.index == 0
+    assert err.rejected.mapping == {"id": "bad", "name": "Ada"}
+    assert isinstance(err.original_error, RuntimeError)
+    assert err.__cause__ is err.original_error
 
 
 def test_jsonl_quarantine(tmp_path: Path) -> None:
@@ -145,10 +204,15 @@ def test_jsonl_quarantine(tmp_path: Path) -> None:
     finally:
         provider.close()
     assert len(result.quarantine_receipts) == 1
+    assert result.quarantine_receipts[0].provider == "jsonl"
+    assert result.quarantine_receipts[0].location == str(path)
     line = path.read_text(encoding="utf-8").strip()
     payload = json.loads(line)
+    assert payload["schema_version"] == "1"
+    assert payload["rejection_type"] == "validation_error"
     assert payload["mapping"]["secret"] == REDACTED
     assert payload["mapping"]["name"] == "Ada"
+    assert payload["errors"]
 
 
 def test_redact_mapping_modes() -> None:
@@ -165,6 +229,15 @@ def test_redact_mapping_modes() -> None:
 
 
 def test_max_rejections_threshold() -> None:
+    ok = rowguard.validate_rows(
+        rows=[{"id": "a", "name": "Ada"}, {"id": 2, "name": "Bob"}],
+        model=UserRead,
+        on_reject="skip",
+        max_rejections=1,
+    )
+    assert ok.statistics.rows_rejected == 1
+    assert ok.valid_count == 1
+
     with pytest.raises(RejectionThresholdError) as excinfo:
         rowguard.validate_rows(
             rows=[
@@ -176,20 +249,50 @@ def test_max_rejections_threshold() -> None:
             on_reject="skip",
             max_rejections=1,
         )
-    assert excinfo.value.rows_rejected == 2
-    assert excinfo.value.max_rejections == 1
+    err = excinfo.value
+    assert err.rows_rejected == 2
+    assert err.max_rejections == 1
+    assert err.last_rejection is not None
+    assert err.last_rejection.index == 1
 
 
 def test_max_rejection_rate_threshold() -> None:
-    with pytest.raises(RejectionThresholdError, match="rate"):
+    # Thresholds check after each rejection. Valid-first so rate is 1/2 when checked.
+    # Equality does not trip (strict >): 1/2 == 0.5
+    ok = rowguard.validate_rows(
+        rows=[
+            {"id": 2, "name": "Bob"},
+            {"id": "a", "name": "Ada"},
+        ],
+        model=UserRead,
+        on_reject="skip",
+        max_rejection_rate=0.5,
+    )
+    assert ok.statistics.rows_rejected == 1
+    assert ok.valid_count == 1
+
+    with pytest.raises(RejectionThresholdError, match="rate") as excinfo:
         rowguard.validate_rows(
             rows=[
-                {"id": "a", "name": "Ada"},
                 {"id": 2, "name": "Bob"},
+                {"id": "a", "name": "Ada"},
             ],
             model=UserRead,
             on_reject="skip",
             max_rejection_rate=0.4,
+        )
+    assert excinfo.value.last_rejection is not None
+    assert abs(excinfo.value.rows_rejected / excinfo.value.rows_read - 0.5) < 1e-9
+
+
+def test_quarantine_transaction_must_be_separate() -> None:
+    with pytest.raises(ConfigurationError, match="quarantine_transaction"):
+        rowguard.validate_rows(
+            rows=[{"id": 1, "name": "Ada"}],
+            model=UserRead,
+            on_reject="quarantine",
+            quarantine=InMemoryQuarantineProvider(),
+            quarantine_transaction="same",  # type: ignore[arg-type]
         )
 
 
@@ -227,7 +330,8 @@ async def test_async_callback() -> None:
     seen: list[int] = []
 
     async def cb(rejected: object, context: object) -> CallbackDecision:
-        del rejected
+        assert isinstance(rejected, rowguard.RejectedRow)
+        assert rejected.index == 1
         seen.append(context.rejection_count)
         return CallbackDecision.RETAIN
 
@@ -242,7 +346,9 @@ async def test_async_callback() -> None:
         )
     await engine.dispose()
     assert result.valid_count == 1
+    assert result.models[0].id == 1
     assert result.rejected_count == 1
+    assert result.rejected[0].index == 1
     assert seen == [1]
 
 
@@ -283,4 +389,50 @@ async def test_async_quarantine_memory() -> None:
         )
     await engine.dispose()
     assert len(result.quarantine_receipts) == 1
+    assert result.quarantine_receipts[0].provider == "memory"
     assert len(provider.records) == 1
+    assert provider.records[0].rejection_type == "validation_error"
+
+
+@pytest.mark.asyncio
+async def test_async_callback_error_raises_from_aselect() -> None:
+    from pydantic import Field
+    from sqlalchemy import Column, Integer, MetaData, String, Table, insert
+    from sqlalchemy.ext.asyncio import create_async_engine
+
+    metadata = MetaData()
+    users = Table(
+        "async_cb_err",
+        metadata,
+        Column("id", Integer, primary_key=True),
+        Column("name", String),
+        Column("age", Integer),
+    )
+
+    class Read(BaseModel):
+        id: int
+        name: str
+        age: int = Field(ge=0)
+
+    engine = create_async_engine("sqlite+aiosqlite:///:memory:")
+    async with engine.begin() as conn:
+        await conn.run_sync(metadata.create_all)
+        await conn.execute(insert(users), [{"id": 1, "name": "Bad", "age": -1}])
+
+    async def boom(rejected: object, context: object) -> None:
+        del rejected, context
+        raise RuntimeError("async boom")
+
+    async with engine.connect() as connection:
+        with pytest.raises(CallbackError, match="async boom") as excinfo:
+            await rowguard.aselect(
+                connection=connection,
+                table=users,
+                model=Read,
+                on_reject="callback",
+                reject_callback=boom,
+                use_sqlrules=False,
+            )
+    await engine.dispose()
+    assert excinfo.value.rejected is not None
+    assert isinstance(excinfo.value.original_error, RuntimeError)

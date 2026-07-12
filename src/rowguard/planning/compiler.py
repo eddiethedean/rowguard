@@ -271,6 +271,12 @@ class QueryPlanner(Generic[T]):
                 "max_rejection_rate must be between 0.0 and 1.0",
                 stage="rejection",
             )
+        if request.rejection.quarantine_transaction != "separate":
+            raise PlanningError(
+                "quarantine_transaction must be 'separate' in 0.6 "
+                f"(got {request.rejection.quarantine_transaction!r})",
+                stage="rejection",
+            )
         if request.adapter.orm_validation not in {"mapping", "from_attributes"}:
             raise PlanningError(
                 f"Unsupported orm_validation: {request.adapter.orm_validation!r}. "

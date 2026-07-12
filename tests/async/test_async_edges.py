@@ -237,6 +237,8 @@ async def test_async_engine_close_failure_does_not_mask_primary() -> None:
 
 
 async def test_async_engine_assembly_guards() -> None:
+    from rowguard.errors import ResultAssemblyError
+
     engine = AsyncExecutionEngine[UserRead]()
     plan = _plan()
     state = ExecutionState(plan=plan)
@@ -244,24 +246,24 @@ async def test_async_engine_assembly_guards() -> None:
     state.statistics.rows_accepted = 1
     state.statistics.rows_rejected = 0
     state.statistics.rows_validated = 1
-    with pytest.raises(Exception, match="Accepted count"):
+    with pytest.raises(ResultAssemblyError, match="Accepted count"):
         engine._assemble(state)
 
     state.accepted.append(UserRead(id=1, name="Ada", age=37))
     state.rejected.append(
         RejectedRow(index=0, model=UserRead, mapping=None, validation_error=None)
     )
-    with pytest.raises(Exception, match="Rejected count"):
+    with pytest.raises(ResultAssemblyError, match="Rejected count"):
         engine._assemble(state)
 
     state.rejected.clear()
     state.statistics.rows_read = 2
-    with pytest.raises(Exception, match="not fully classified"):
+    with pytest.raises(ResultAssemblyError, match="not fully classified"):
         engine._assemble(state)
 
     state.statistics.rows_read = 1
     state.statistics.rows_validated = 2
-    with pytest.raises(Exception, match="Validated count"):
+    with pytest.raises(ResultAssemblyError, match="Validated count"):
         engine._assemble(state)
 
 

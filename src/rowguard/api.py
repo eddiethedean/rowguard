@@ -87,6 +87,11 @@ def _rejection_config(
         raise ConfigurationError("max_rejections must be >= 0")
     if max_rejection_rate is not None and not (0.0 <= max_rejection_rate <= 1.0):
         raise ConfigurationError("max_rejection_rate must be between 0.0 and 1.0")
+    if quarantine_transaction != "separate":
+        raise ConfigurationError(
+            "quarantine_transaction must be 'separate' in 0.6 "
+            f"(got {quarantine_transaction!r})"
+        )
 
     policy: RejectionPolicyName = on_reject  # type: ignore[assignment]
     return RejectionConfig(

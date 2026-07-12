@@ -9,7 +9,7 @@ from sqlalchemy import select
 
 import rowguard
 from rowguard.adapters.sqlalchemy_row import SQLAlchemyRowAdapter
-from rowguard.errors import PlanningError, QueryExecutionError
+from rowguard.errors import PlanningError
 from rowguard.execution.processor import aprocess_row
 from rowguard.planning.execution_plan import (
     AdapterPlan,
@@ -63,23 +63,31 @@ async def test_aprocess_row_accept_and_reject() -> None:
         index=0,
         plan=_plan(),
     )
-    assert accepted.model is not None
+    assert accepted.model == UserRead(id=1, name="Ada", age=30)
+    assert accepted.rejected is None
 
     rejected = await aprocess_row(
         row={"id": "bad", "name": "Ada", "age": 30},
         index=1,
         plan=_plan(),
     )
+    assert rejected.model is None
     assert rejected.rejected is not None
-    assert rejected.retain_rejection
+    assert rejected.rejected.index == 1
+    assert rejected.rejected.validation_error is not None
+    assert rejected.retain_rejection is True
+    assert rejected.continue_processing is True
 
 
 @pytest.mark.asyncio
 async def test_aprocess_row_adaptation_failure() -> None:
+    from rowguard.errors import RowAdaptationError
+
     processed = await aprocess_row(row=object(), index=2, plan=_plan())
     assert processed.model is None
     assert processed.rejected is not None
-    assert processed.rejected.adaptation_error is not None
+    assert processed.rejected.index == 2
+    assert isinstance(processed.rejected.adaptation_error, RowAdaptationError)
 
 
 @pytest.mark.asyncio
@@ -298,19 +306,9 @@ async def test_aprocess_row_generic_adapter_exception() -> None:
 
 
 def test_stream_process_row_errors(monkeypatch: pytest.MonkeyPatch, session, users_table) -> None:
+    """Typed RowGuardError is not re-wrapped; other exceptions become QueryExecutionError."""
     import rowguard.results.stream_result as sr
-
-    def boom(**_kwargs: object) -> object:
-        raise RuntimeError("process boom")
-
-    monkeypatch.setattr(sr, "process_row", boom)
-    with pytest.raises(QueryExecutionError, match="Query execution failed"), rowguard.stream(
-        session=session,
-        statement=select(users_table),
-        model=FixtureUser,
-        use_sqlrules=False,
-    ) as stream:
-        next(stream)
+    from rowguard.errors import QueryExecutionError
 
     def boom_rg(**_kwargs: object) -> object:
         raise PlanningError("guard boom")
@@ -323,6 +321,22 @@ def test_stream_process_row_errors(monkeypatch: pytest.MonkeyPatch, session, use
         use_sqlrules=False,
     ) as stream:
         next(stream)
+
+    def boom_other(**_kwargs: object) -> object:
+        raise RuntimeError("other boom")
+
+    monkeypatch.setattr(sr, "process_row", boom_other)
+    with (
+        pytest.raises(QueryExecutionError, match="Query execution failed") as excinfo,
+        rowguard.stream(
+            session=session,
+            statement=select(users_table),
+            model=FixtureUser,
+            use_sqlrules=False,
+        ) as stream2,
+    ):
+        next(stream2)
+    assert isinstance(excinfo.value.__cause__, RuntimeError)
 
 
 def test_api_rejection_kwarg_guards() -> None:
